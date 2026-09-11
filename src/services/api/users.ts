@@ -6,6 +6,7 @@ import type {
   ApiDisableUserResponse,
   ApiEnableUserResponse,
   ApiDeleteUserResponse,
+  ApiUser,
 } from '@/types/api';
 
 export const userService = {
