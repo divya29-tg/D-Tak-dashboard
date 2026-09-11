@@ -6,6 +6,12 @@ import { UserManagementScreen } from '@/pages/UserManagement/UserManagementScree
 import { GroupManagementScreen } from '@/pages/GroupManagement/GroupManagementScreen';
 import { ROUTES } from './routes';
 
+if (typeof window !== 'undefined') {
+  sessionStorage.removeItem('dtak_admin_id');
+  sessionStorage.removeItem('dtak_admin_name');
+  sessionStorage.removeItem('dtak_admin_role');
+}
+
 function ProtectedRoute({ children }: { children: ReactNode }) {
   const isAuthenticated = !!sessionStorage.getItem('dtak_admin_id');
   if (!isAuthenticated) {

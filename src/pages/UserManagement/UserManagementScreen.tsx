@@ -31,13 +31,15 @@ export interface UserItem {
 }
 
 function mapApiUserToUserItem(apiUser: ApiUser): UserItem {
-  const isUserDisabled = apiUser.status?.toLowerCase() === 'disabled';
-  const isUserActive = apiUser.status?.toLowerCase() === 'active';
+  const statusLower = (apiUser.status || '').toLowerCase();
+  const isUserDisabled = statusLower === 'disabled';
+  const isUserInactive = statusLower === 'inactive' || statusLower === 'deactivated';
+  const isUserActive = statusLower === 'active';
 
   let displayStatus: 'ACTIVE' | 'DISABLED' | 'INACTIVE' | 'SUSPENDED' | 'PENDING' = 'ACTIVE';
   if (isUserDisabled) {
     displayStatus = 'DISABLED';
-  } else if (!isUserActive) {
+  } else if (isUserInactive || !isUserActive) {
     displayStatus = 'INACTIVE';
   }
 
@@ -57,7 +59,7 @@ function mapApiUserToUserItem(apiUser: ApiUser): UserItem {
     status: displayStatus,
     lastActive: 'Active',
     isDisabled: isUserDisabled,
-    isDeactivated: false,
+    isDeactivated: isUserInactive,
   };
 }
 
@@ -223,7 +225,6 @@ export function UserManagementScreen() {
         activeCount: Math.max(0, prev.activeCount - 1),
         disabledCount: prev.disabledCount + 1,
       }));
-      void fetchUsers();
     } finally {
       setIsOperationLoading(false);
       setDeactivatingUser(null);
@@ -255,7 +256,6 @@ export function UserManagementScreen() {
         activeCount: prev.activeCount + 1,
         disabledCount: Math.max(0, prev.disabledCount - 1),
       }));
-      void fetchUsers();
     } finally {
       setIsOperationLoading(false);
       setActivatingUser(null);
@@ -303,7 +303,7 @@ export function UserManagementScreen() {
     }));
   };
 
-  const handleEditUser = (data: {
+  const handleEditUser = async (data: {
     fullName: string;
     userName: string;
     email: string;
@@ -313,27 +313,43 @@ export function UserManagementScreen() {
   }) => {
     if (!editingUser) return;
     const targetUsername = editingUser.username || editingUser.id;
-    setUsers((prev) =>
-      prev.map((u) => {
-        if (u.username === targetUsername || u.id === targetUsername) {
-          return {
-            ...u,
-            fullName: data.fullName.trim() || u.fullName,
-            name: data.fullName.trim() || u.name,
-            username: data.userName.trim() || u.username,
-            email: data.email.trim() || u.email,
-            position: data.position || u.position,
-            role: data.role || u.role,
-            assignedGroup: data.assignedGroup || u.assignedGroup,
-          };
-        }
-        return u;
-      })
-    );
-    userCache.updateUser(targetUsername, {
-      name: data.fullName.trim(),
-      email: data.email.trim(),
-    });
+    if (!targetUsername || !targetUsername.trim()) {
+      throw new Error('Username is missing for selected user');
+    }
+
+    try {
+      setIsOperationLoading(true);
+      await userService.updateUser(targetUsername, data);
+
+      const oldTarget = targetUsername.trim().toLowerCase();
+      const newUsername = data.userName.trim();
+      const newName = data.fullName.trim();
+      const newEmail = data.email.trim();
+
+      setUsers((prev) =>
+        prev.map((u) => {
+          const uName = (u.username || '').trim().toLowerCase();
+          const uId = (u.id || '').trim().toLowerCase();
+          if (uName === oldTarget || uId === oldTarget) {
+            return {
+              ...u,
+              id: newUsername || u.id,
+              username: newUsername || u.username,
+              fullName: newName || u.fullName,
+              name: newName || u.name,
+              email: newEmail || u.email,
+              position: data.position || u.position,
+              role: data.role || u.role,
+              assignedGroup: data.assignedGroup || u.assignedGroup,
+            };
+          }
+          return u;
+        })
+      );
+    } finally {
+      setIsOperationLoading(false);
+      setEditingUser(null);
+    }
   };
 
   const filteredUsers = users.filter((user) => {

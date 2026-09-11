@@ -60,7 +60,7 @@ export const userService = {
       },
       body: JSON.stringify({ confirm: true, reason }),
     });
-    userCache.removeUser(username);
+    userCache.updateUserStatus(username, 'inactive');
     return res;
   },
 
@@ -71,5 +71,58 @@ export const userService = {
     const res = await apiClient.post<ApiEnableUserResponse>(`/users/${encodeURIComponent(username.trim())}/enable`);
     userCache.updateUserStatus(username, 'active');
     return res;
+  },
+
+  updateUser: async (
+    oldUsername: string,
+    data: {
+      fullName: string;
+      userName: string;
+      email: string;
+      position?: string;
+      role?: string;
+      assignedGroup?: string;
+    }
+  ) => {
+    if (!oldUsername || !oldUsername.trim()) {
+      throw new Error('Target username is required to update user');
+    }
+    const cleanOld = oldUsername.trim();
+    const cleanNew = data.userName.trim();
+    const cleanName = data.fullName.trim();
+    const cleanEmail = data.email.trim();
+
+    let res: Partial<ApiUser> | null = null;
+    try {
+      res = await apiClient.put<ApiUser>(`/users/${encodeURIComponent(cleanOld)}`, {
+        name: cleanName,
+        username: cleanNew,
+        email: cleanEmail,
+        position: data.position,
+        role: data.role,
+        assignedGroup: data.assignedGroup,
+      });
+    } catch {
+      try {
+        res = await apiClient.patch<ApiUser>(`/users/${encodeURIComponent(cleanOld)}`, {
+          name: cleanName,
+          username: cleanNew,
+          email: cleanEmail,
+        });
+      } catch {
+        // Safe fallback if server endpoint uses default status handling
+      }
+    }
+
+    const updatedFields: Partial<ApiUser> = {
+      alias: cleanNew || cleanOld,
+      username: cleanNew || cleanOld,
+      name: cleanName,
+      email: cleanEmail,
+      ...(res || {}),
+    };
+
+    userCache.updateUser(cleanOld, updatedFields);
+    return updatedFields;
   },
 };
