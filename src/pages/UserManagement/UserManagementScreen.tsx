@@ -480,8 +480,7 @@ export function UserManagementScreen() {
               <table className="users-table">
                 <thead>
                   <tr>
-                    <th>ID</th>
-                    <th>NAME</th>
+                    <th>CALLSIGN</th>
                     <th>ROLE</th>
                     <th>DUTY STATUS</th>
                     <th>LAST ACTIVE</th>
@@ -491,16 +490,15 @@ export function UserManagementScreen() {
                 <tbody>
                   {filteredUsers.length === 0 ? (
                     <tr>
-                      <td colSpan={6} className="empty-table-cell">
+                      <td colSpan={5} className="empty-table-cell">
                         No users found
                       </td>
                     </tr>
                   ) : (
                     filteredUsers.map((user) => (
                       <tr key={user.id}>
-                        <td className="cell-id">{user.id}</td>
-                        <td className="cell-name">
-                          {user.fullName}
+                        <td className="cell-id">
+                          {user.id}
                           {user.isAdmin && (
                             <span className="admin-badge" title="Admin Console access">
                               <ShieldCheck size={11} /> ADMIN

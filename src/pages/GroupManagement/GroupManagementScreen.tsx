@@ -314,7 +314,7 @@ export function GroupManagementScreen() {
                       <td className="grp-cell-id">{group.id}</td>
                       <td className="grp-cell-name">{group.groupName}</td>
                       <td className="grp-cell-members">
-                        {group.members ? group.members.length : group.membersCount}
+                        {group.members && group.members.length > 0 ? group.members.length : group.membersCount}
                       </td>
                       <td className="grp-cell-status">
                         <span className={`grp-status grp-status--${group.status.toLowerCase()}`}>

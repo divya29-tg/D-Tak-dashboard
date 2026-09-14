@@ -474,13 +474,9 @@
 }
 
 .cell-id {
-  color: #6b7280;
-  font-family: monospace;
-}
-
-.cell-name {
-  font-weight: 600;
   color: #ffffff;
+  font-weight: 600;
+  font-family: monospace;
 }
 
 .cell-role {

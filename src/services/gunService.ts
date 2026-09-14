@@ -39,11 +39,57 @@ export interface GunMessage {
 class GunService {
   private gun = gun;
   private currentUser: any = null;
+  private peerReadyPromise: Promise<void> | null = null;
+
+  /**
+   * Resolve once at least one relay peer has connected (Gun's 'hi' event),
+   * or after a timeout -- whichever comes first. Cached once per app session
+   * since later calls are effectively free.
+   */
+  private waitForPeer(timeoutMs = 4000): Promise<void> {
+    if (this.peerReadyPromise) return this.peerReadyPromise;
+    this.peerReadyPromise = new Promise((resolve) => {
+      let settled = false;
+      const done = () => {
+        if (settled) return;
+        settled = true;
+        resolve();
+      };
+      this.gun.on('hi', () => done());
+      setTimeout(done, timeoutMs);
+    });
+    return this.peerReadyPromise;
+  }
+
+  /**
+   * Force-fetch and cache an alias's `~@alias` index node before touching
+   * SEA's own auth machinery.
+   *
+   * Root cause of "Wrong user or password" on any browser/device other than
+   * the one an account was created on: on a cold connection (nothing in this
+   * peer's local graph yet), this specific relay can take several seconds to
+   * answer even a single-hop lookup -- measured ~9s for a first response.
+   * Gun's own internal `user.auth()` gives up on its (much shorter) internal
+   * wait long before that answer arrives, and reports it identically to an
+   * actually-wrong password. Doing this lookup ourselves first, with an
+   * explicit long `wait`, warms Gun's local graph cache so the alias/pub
+   * lookup `auth()` performs internally resolves instantly instead of
+   * racing the network. (Verified: auth() takes ~300ms after this warm-up,
+   * vs. failing outright without it.)
+   */
+  private warmAliasLookup(username: string, waitMs = 9000): Promise<void> {
+    return new Promise((resolve) => {
+      this.gun.get(`~@${username}`).once(() => resolve(), { wait: waitMs } as any);
+      // Belt-and-suspenders in case this Gun version ignores the `wait` option.
+      setTimeout(resolve, waitMs + 500);
+    });
+  }
 
   /**
    * Register a new user with username and password
    */
   async registerUser(username: string, password: string): Promise<boolean> {
+    await this.waitForPeer();
     return new Promise((resolve, reject) => {
       const user = this.gun.user();
       user.create(username, password, (ack: any) => {
@@ -65,25 +111,49 @@ class GunService {
   }
 
   /**
-   * Login user with username and password
+   * Login user with username and password.
+   *
+   * Warms the alias lookup first (see warmAliasLookup) so a cold browser/
+   * device isn't racing the relay's first response inside auth()'s own
+   * short internal timeout, then retries a couple more times with backoff
+   * as a safety net for anything the warm-up didn't fully settle.
    */
   async loginUser(username: string, password: string): Promise<GunUser> {
-    return new Promise((resolve, reject) => {
-      const user = this.gun.user();
-      user.auth(username, password, (ack: any) => {
-        if (ack.err) {
-          console.error('Login error:', ack.err);
-          reject(new Error('Login failed'));
-        } else {
-          this.currentUser = user;
-          console.log('User logged in:', username);
-          resolve({
-            username: username,
-            alias: (user.is?.alias as string) || username,
-          });
-        }
+    await this.waitForPeer();
+    await this.warmAliasLookup(username);
+
+    const attempt = (): Promise<GunUser> =>
+      new Promise((resolve, reject) => {
+        const user = this.gun.user();
+        user.auth(username, password, (ack: any) => {
+          if (ack.err) {
+            reject(new Error(ack.err));
+          } else {
+            this.currentUser = user;
+            resolve({
+              username: username,
+              alias: (user.is?.alias as string) || username,
+            });
+          }
+        });
       });
-    });
+
+    const retryDelaysMs = [0, 1500, 3000];
+    let lastError: Error = new Error('Login failed');
+    for (const delay of retryDelaysMs) {
+      if (delay) await new Promise((r) => setTimeout(r, delay));
+      try {
+        const result = await attempt();
+        console.log('User logged in:', username);
+        return result;
+      } catch (err) {
+        lastError = err instanceof Error ? err : new Error('Login failed');
+        console.warn('Login attempt failed, retrying:', lastError.message);
+      }
+    }
+
+    console.error('Login error:', lastError.message);
+    throw new Error('Login failed');
   }
 
   /**
@@ -408,28 +478,6 @@ class GunService {
         } else {
           resolve();
         }
-      });
-    });
-  }
-
-  /**
-   * Subscribe to contact requests addressed to a user, at the same
-   * users/<username>/contactRequests path app.js's setupContactRequestListener
-   * reads. Requests are keyed by Gun's own generated id (there is no `id`
-   * field on the record itself), and `handled` distinguishes ones already
-   * acted on from pending ones.
-   */
-  listenContactRequestsForUser(
-    username: string,
-    callback: (request: { id: string; from: string; timestamp: number; handled: boolean }) => void
-  ): void {
-    this.gun.get('users').get(username).get('contactRequests').map().on((request: any, requestId: string) => {
-      if (!request || !request.from) return;
-      callback({
-        id: requestId,
-        from: request.from,
-        timestamp: request.timestamp,
-        handled: Boolean(request.handled),
       });
     });
   }

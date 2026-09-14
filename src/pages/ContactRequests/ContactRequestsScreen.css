@@ -336,6 +336,10 @@
   color: #00BC7D;
 }
 
+.creq-stat-card__label--declined {
+  color: #FF4D4D;
+}
+
 /* Toolbar */
 .creq-toolbar {
   height: 42px;
@@ -510,15 +514,25 @@
   background-color: rgba(0, 188, 125, 0.08);
 }
 
-.creq-cell-actions {
-  width: 150px;
+.creq-status--declined {
+  color: #FF4D4D;
+  background-color: rgba(255, 77, 77, 0.08);
 }
 
-.creq-accept-btn {
+.creq-cell-actions {
+  width: 190px;
+}
+
+.creq-actions-group {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.creq-accept-btn,
+.creq-decline-btn {
   height: 30px;
-  padding: 0 14px;
-  background-color: #8FBF3F;
-  color: #0A0A0A;
+  padding: 0 12px;
   border: none;
   border-radius: 6px;
   font-family: 'Inter', sans-serif;
@@ -532,22 +546,43 @@
   transition: opacity 0.2s ease;
 }
 
-.creq-accept-btn:hover {
-  opacity: 0.9;
+.creq-accept-btn {
+  background-color: #8FBF3F;
+  color: #0A0A0A;
 }
 
-.creq-accept-btn:disabled {
+.creq-decline-btn {
+  background-color: transparent;
+  color: #FF4D4D;
+  border: 1px solid rgba(255, 77, 77, 0.4);
+}
+
+.creq-accept-btn:hover,
+.creq-decline-btn:hover {
+  opacity: 0.85;
+}
+
+.creq-accept-btn:disabled,
+.creq-decline-btn:disabled {
   opacity: 0.5;
   cursor: not-allowed;
 }
 
-.creq-accepted-label {
+.creq-accepted-label,
+.creq-declined-label {
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  color: #00BC7D;
   font-size: 12px;
   font-weight: 600;
+}
+
+.creq-accepted-label {
+  color: #00BC7D;
+}
+
+.creq-declined-label {
+  color: #FF4D4D;
 }
 
 .creq-empty-cell {
