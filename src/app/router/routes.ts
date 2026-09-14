@@ -6,4 +6,5 @@ export const ROUTES = {
   CONTACT_REQUESTS: '/requests',
   EDGE_NODES: '/edge-nodes',
   NCC: '/ncc',
+  SHARED_MAP: '/shared-map',
 } as const;

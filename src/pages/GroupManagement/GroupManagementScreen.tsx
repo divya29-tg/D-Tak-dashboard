@@ -5,6 +5,7 @@ import { ROUTES } from '@/app/router/routes';
 import dtakLogo from '@/assets/dtak-logo.png';
 import { groupService } from '@/services/api/groups';
 import { userService } from '@/services/api/users';
+import { gunService } from '@/services/gunService';
 import type { ApiGroup, ApiUser } from '@/types/api';
 import { ChatModal } from '@/components/Chat/ChatModal';
 import { CreateGroupModal } from './components/CreateGroupModal';
@@ -12,6 +13,7 @@ import { EditGroupModal } from './components/EditGroupModal';
 import { DeactivateGroupModal } from './components/DeactivateGroupModal';
 import { ActivateGroupModal } from './components/ActivateGroupModal';
 import { getAdminProfile } from '@/utils/adminProfile';
+import { useAuth } from '@/app/router/AppRouter';
 import type { GroupItem } from './types';
 import type { CandidateMember } from './constants';
 import './GroupManagementScreen.css';
@@ -39,6 +41,7 @@ function mapApiGroupToGroupItem(apiGroup: ApiGroup): GroupItem {
 
 export function GroupManagementScreen() {
   const navigate = useNavigate();
+  const { logout } = useAuth();
   const adminProfile = getAdminProfile();
   const [groups, setGroups] = useState<GroupItem[]>([]);
   const [rosterUsers, setRosterUsers] = useState<CandidateMember[]>([]);
@@ -63,17 +66,60 @@ export function GroupManagementScreen() {
     }
   };
 
+  // The REST list endpoint's `memberCount` field was found to be unreliable
+  // (always 1, regardless of a group's actual membership -- confirmed
+  // against both live Gun data and the REST detail endpoint, which agree
+  // with each other but not with the list). Backfill real counts from Gun,
+  // a few groups at a time so 24+ groups don't fire 24+ simultaneous queries.
+  //
+  // Deliberately NOT a useEffect reacting to `groups` state: each backfilled
+  // group's setGroups call would change the `groups` reference and re-fire
+  // such an effect, whose cleanup would then cancel every other still-in-
+  // flight fetch from the batch it just interrupted -- so only a couple of
+  // groups ever actually got backfilled before the rest were silently
+  // dropped. Called directly, once, after each successful list load instead.
+  const backfillGroupMemberData = (groupIds: string[]) => {
+    const CONCURRENCY = 5;
+    let index = 0;
+    async function worker() {
+      while (index < groupIds.length) {
+        const groupId = groupIds[index++];
+        const [members, groupNode] = await Promise.all([
+          gunService.getGroupMembers(groupId),
+          gunService.getGroupOnce(groupId),
+        ]);
+        const isDeactivated = Boolean(groupNode?.disabled);
+        setGroups((prev) =>
+          prev.map((g) =>
+            g.id === groupId
+              ? {
+                  ...g,
+                  members,
+                  membersCount: members.length,
+                  isDeactivated,
+                  status: isDeactivated ? 'RESTRICTED' : 'ACTIVE',
+                }
+              : g
+          )
+        );
+      }
+    }
+    void Promise.all(Array.from({ length: Math.min(CONCURRENCY, groupIds.length) }, worker));
+  };
+
   const fetchGroups = async () => {
     const cached = groupService.getCachedGroups();
 
     if (cached && cached.groups && cached.groups.length > 0) {
       setGroups(cached.groups.map(mapApiGroupToGroupItem));
       setIsLoading(false);
+      backfillGroupMemberData(cached.groups.map((g) => g.groupId));
 
       try {
         const res = await groupService.getGroups();
         if (res.groups && res.groups.length > 0) {
           setGroups(res.groups.map(mapApiGroupToGroupItem));
+          backfillGroupMemberData(res.groups.map((g) => g.groupId));
         }
       } catch {
         // Keep showing cached groups if background refresh fails
@@ -84,6 +130,7 @@ export function GroupManagementScreen() {
         const res = await groupService.getGroups();
         if (res.groups && res.groups.length > 0) {
           setGroups(res.groups.map(mapApiGroupToGroupItem));
+          backfillGroupMemberData(res.groups.map((g) => g.groupId));
         }
       } catch {
         // Fallback silently if API fails
@@ -115,22 +162,30 @@ export function GroupManagementScreen() {
     );
   };
 
-  const handleConfirmDeactivate = () => {
+  const handleConfirmDeactivate = async () => {
     if (!deactivatingGroup) return;
+    // Actually clears the group's real member set (see gunService docs) so
+    // it disappears from everyone's stream list on the real client, not
+    // just a flag -- reflect that the members count really does drop to 0.
+    await gunService.setGroupDisabled(deactivatingGroup.id, true);
     setGroups((prev) =>
       prev.map((g) =>
-        g.id === deactivatingGroup.id ? { ...g, isDeactivated: true, status: 'RESTRICTED' } : g
+        g.id === deactivatingGroup.id
+          ? { ...g, isDeactivated: true, status: 'RESTRICTED', members: [], membersCount: 0 }
+          : g
       )
     );
     setDeactivatingGroup(null);
   };
 
-  const handleConfirmActivate = () => {
+  const handleConfirmActivate = async () => {
     if (!activatingGroup) return;
+    await gunService.setGroupDisabled(activatingGroup.id, false);
+    const restoredMembers = await gunService.getGroupMembers(activatingGroup.id);
     setGroups((prev) =>
       prev.map((g) =>
         g.id === activatingGroup.id
-          ? { ...g, isDeactivated: false, status: 'ACTIVE' }
+          ? { ...g, isDeactivated: false, status: 'ACTIVE', members: restoredMembers, membersCount: restoredMembers.length }
           : g
       )
     );
@@ -237,9 +292,7 @@ export function GroupManagementScreen() {
             type="button"
             className="grp-sidebar__logout-btn"
             onClick={() => {
-              sessionStorage.removeItem('dtak_admin_id');
-              sessionStorage.removeItem('dtak_admin_name');
-              sessionStorage.removeItem('dtak_admin_role');
+              logout();
               navigate(ROUTES.LOGIN);
             }}
           >
@@ -291,20 +344,19 @@ export function GroupManagementScreen() {
                   <th className="grp-col-name">NAME</th>
                   <th className="grp-col-members">MEMBERS</th>
                   <th className="grp-col-status">STATUS</th>
-                  <th className="grp-col-owner">OWNER/ADMIN</th>
                   <th className="grp-col-actions">ACTIONS</th>
                 </tr>
               </thead>
               <tbody>
                 {isLoading ? (
                   <tr>
-                    <td colSpan={6} className="grp-empty-cell">
+                    <td colSpan={5} className="grp-empty-cell">
                       <Loader2 size={16} className="grp-spinner animate-spin" /> Loading groups...
                     </td>
                   </tr>
                 ) : filteredGroups.length === 0 ? (
                   <tr>
-                    <td colSpan={6} className="grp-empty-cell">
+                    <td colSpan={5} className="grp-empty-cell">
                       No groups found
                     </td>
                   </tr>
@@ -313,15 +365,12 @@ export function GroupManagementScreen() {
                     <tr key={group.id} className="grp-table__data-row">
                       <td className="grp-cell-id">{group.id}</td>
                       <td className="grp-cell-name">{group.groupName}</td>
-                      <td className="grp-cell-members">
-                        {group.members && group.members.length > 0 ? group.members.length : group.membersCount}
-                      </td>
+                      <td className="grp-cell-members">{group.membersCount}</td>
                       <td className="grp-cell-status">
                         <span className={`grp-status grp-status--${group.status.toLowerCase()}`}>
                           <span className="grp-status__dot">●</span> {group.status}
                         </span>
                       </td>
-                      <td className="grp-cell-owner">{group.assignedAdmin}</td>
                       <td className="grp-cell-actions">
                         <div className="grp-actions-group">
                           <button

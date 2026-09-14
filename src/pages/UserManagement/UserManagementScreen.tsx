@@ -14,6 +14,7 @@ import { EditUserModal } from './components/EditUserModal';
 import { DeactivateUserModal } from './components/DeactivateUserModal';
 import { ActivateUserModal } from './components/ActivateUserModal';
 import { getAdminProfile } from '@/utils/adminProfile';
+import { useAuth } from '@/app/router/AppRouter';
 import './UserManagementScreen.css';
 
 export interface UserItem {
@@ -68,6 +69,7 @@ function mapApiUserToUserItem(apiUser: ApiUser): UserItem {
 
 export function UserManagementScreen() {
   const navigate = useNavigate();
+  const { logout } = useAuth();
   const adminProfile = getAdminProfile();
   const [users, setUsers] = useState<UserItem[]>([]);
   const [apiCounts, setApiCounts] = useState<{ totalCount: number; activeCount: number; disabledCount: number }>({
@@ -392,9 +394,7 @@ export function UserManagementScreen() {
             type="button"
             className="sidebar__logout-btn"
             onClick={() => {
-              sessionStorage.removeItem('dtak_admin_id');
-              sessionStorage.removeItem('dtak_admin_name');
-              sessionStorage.removeItem('dtak_admin_role');
+              logout();
               navigate(ROUTES.LOGIN);
             }}
           >

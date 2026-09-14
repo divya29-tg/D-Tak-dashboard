@@ -1,7 +1,6 @@
 import { useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
-  ArrowLeft,
   User,
   Users,
   MapPin,
@@ -22,11 +21,11 @@ import {
   Hash,
   Copy,
   Calendar,
-  HelpCircle,
 } from 'lucide-react';
 import { ROUTES } from '@/app/router/routes';
 import dtakLogo from '@/assets/dtak-logo.png';
 import { getAdminProfile } from '@/utils/adminProfile';
+import { useAuth } from '@/app/router/AppRouter';
 import './NCCScreen.css';
 
 type RangeMode = 'daily' | 'weekly' | 'monthly';
@@ -324,6 +323,7 @@ function ServiceAnalyticsChart({
 
 export function NCCScreen() {
   const navigate = useNavigate();
+  const { logout } = useAuth();
   const adminProfile = getAdminProfile();
 
   const [holderRange, setHolderRange] = useState<RangeMode>('monthly');
@@ -418,9 +418,7 @@ export function NCCScreen() {
             type="button"
             className="ncc-sidebar__logout-btn"
             onClick={() => {
-              sessionStorage.removeItem('dtak_admin_id');
-              sessionStorage.removeItem('dtak_admin_name');
-              sessionStorage.removeItem('dtak_admin_role');
+              logout();
               navigate(ROUTES.LOGIN);
             }}
           >
@@ -434,15 +432,8 @@ export function NCCScreen() {
       <main className="ncc-main">
         <div className="ncc-topbar">
           <div className="ncc-topbar__left">
-            <button type="button" className="ncc-back-btn" onClick={() => navigate(ROUTES.HOME)}>
-              <ArrowLeft size={18} />
-              <span>Back</span>
-            </button>
             <h1 className="ncc-topbar__title">Gamma Consortium</h1>
           </div>
-          <button type="button" className="ncc-ledger-badge">
-            TrustGrid Ledger
-          </button>
         </div>
 
         <div className="ncc-body">
@@ -619,10 +610,6 @@ export function NCCScreen() {
             ))}
           </div>
         </div>
-
-        <button type="button" className="ncc-help-btn" title="Help">
-          <HelpCircle size={24} />
-        </button>
       </main>
     </div>
   );

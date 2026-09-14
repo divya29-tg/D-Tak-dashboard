@@ -1,6 +1,12 @@
 import { useEffect, useRef, useState, type FormEvent } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { X, Send, User, Users as UsersIcon } from 'lucide-react';
 import { gunService, type GunMessage } from '@/services/gunService';
+import { ChatFileMessage, ChatUnknownAttachment } from './ChatFileMessage';
+import { ChatMapShareMessage } from './ChatMapShareMessage';
+import { parseFileMessage, parseUnknownJson } from '@/utils/fileDecryption';
+import { parseMapShare } from '@/utils/mapShareParsing';
+import { ROUTES } from '@/app/router/routes';
 import './ChatModal.css';
 
 export interface ChatModalProps {
@@ -12,6 +18,7 @@ export interface ChatModalProps {
 }
 
 export function ChatModal({ isOpen, onClose, mode, targetId, targetName }: ChatModalProps) {
+  const navigate = useNavigate();
   const [messages, setMessages] = useState<GunMessage[]>([]);
   const [draft, setDraft] = useState('');
   const [error, setError] = useState<string | null>(null);
@@ -95,6 +102,9 @@ export function ChatModal({ isOpen, onClose, mode, targetId, targetName }: ChatM
           ) : (
             messages.map((msg) => {
               const isOwn = Boolean(currentAlias) && msg.sender === currentAlias;
+              const fileInfo = parseFileMessage(msg.content);
+              const mapShare = !fileInfo ? parseMapShare(msg.content) : null;
+              const unknownJson = !fileInfo && !mapShare ? parseUnknownJson(msg.content) : null;
               return (
                 <div
                   key={msg.id}
@@ -104,7 +114,20 @@ export function ChatModal({ isOpen, onClose, mode, targetId, targetName }: ChatM
                     {!isOwn && mode === 'group' && (
                       <span className="chat-bubble__sender">{msg.sender}</span>
                     )}
-                    <span className="chat-bubble__text">{msg.content}</span>
+                    {fileInfo ? (
+                      <ChatFileMessage fileInfo={fileInfo} />
+                    ) : mapShare ? (
+                      <ChatMapShareMessage
+                        item={mapShare}
+                        onView={() =>
+                          navigate(ROUTES.SHARED_MAP, { state: { item: mapShare, sender: msg.sender } })
+                        }
+                      />
+                    ) : unknownJson ? (
+                      <ChatUnknownAttachment data={unknownJson} />
+                    ) : (
+                      <span className="chat-bubble__text">{msg.content}</span>
+                    )}
                     <span className="chat-bubble__time">
                       {new Date(msg.timestamp).toLocaleTimeString([], {
                         hour: '2-digit',

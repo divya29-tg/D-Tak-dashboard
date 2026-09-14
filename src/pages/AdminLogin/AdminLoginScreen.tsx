@@ -1,18 +1,26 @@
 import { useState, useRef, type FormEvent } from 'react';
-import { useNavigate } from 'react-router-dom';
 import { X } from 'lucide-react';
-import { ROUTES } from '@/app/router/routes';
+import { useAuth } from '@/app/router/AppRouter';
 import dtakLogo from '@/assets/dtak-logo.png';
 import { gunService } from '@/services/gunService';
 import { isAdminUser, setAdminUser, getAdminUsernames } from '@/utils/adminRegistry';
 import './AdminLoginScreen.css';
 
-// Gun/SEA requires an 8+ char secret; the 6-digit PIN is stretched into one
-// by appending this fixed suffix, so the operator only ever types the PIN.
-const GUN_PIN_SUFFIX = '@Trus';
+/**
+ * Gun/SEA requires an 8+ char secret; the 6-digit PIN is stretched into one
+ * so the operator only ever types the PIN. This must match app.js's own
+ * deep-link auto-login stretch exactly (`password += "Trus@" + password`,
+ * i.e. the PIN duplicated around a fixed separator) -- a previous version
+ * of this used a different, locally-invented suffix scheme, which meant an
+ * admin account created here couldn't log in through the real dchat client
+ * with the same PIN, and vice versa.
+ */
+function stretchPin(pin: string): string {
+  return `${pin}Trus@${pin}`;
+}
 
 export function AdminLoginScreen() {
-  const navigate = useNavigate();
+  const { login } = useAuth();
 
   const [adminId, setAdminId] = useState('');
   const [pin, setPin] = useState('');
@@ -116,7 +124,7 @@ export function AdminLoginScreen() {
     }
 
     const gunAlias = adminId.trim();
-    const gunSecret = `${pin}${GUN_PIN_SUFFIX}`;
+    const gunSecret = stretchPin(pin);
 
     // Bootstrap path: env credentials are only honored to create the very
     // first admin, before the Users list has anyone flagged as admin.
@@ -141,6 +149,20 @@ export function AdminLoginScreen() {
       await gunService.loginUser(gunAlias, gunSecret);
     } catch (loginError) {
       if (isBootstrap) {
+        // Never re-register over an alias that already has an account --
+        // SEA's create() doesn't reliably error "already created" when the
+        // relay hasn't finished syncing yet, so retrying it here is exactly
+        // what mints a second, conflicting identity under the same alias
+        // and leaves both unable to log in reliably afterward. If it
+        // already exists, this was just a login hiccup (flaky relay) --
+        // ask for a retry instead of touching registration again.
+        const alreadyExists = await gunService.aliasExists(gunAlias);
+        if (alreadyExists) {
+          console.error('Gun.js admin authentication failed (account already exists):', loginError);
+          setIsAuthenticating(false);
+          setErrorMessage('Login failed — please try again in a moment.');
+          return;
+        }
         try {
           await gunService.registerUser(gunAlias, gunSecret);
           await gunService.loginUser(gunAlias, gunSecret);
@@ -163,8 +185,9 @@ export function AdminLoginScreen() {
     }
 
     setIsAuthenticating(false);
-    sessionStorage.setItem('dtak_admin_id', gunAlias);
-    navigate(ROUTES.HOME);
+    // Updates the shared auth status the router's route guards actually
+    // read; PublicOnlyRoute then redirects to HOME on its own re-render.
+    login(gunAlias);
   };
 
   return (

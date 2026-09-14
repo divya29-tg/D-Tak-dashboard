@@ -255,39 +255,11 @@
   gap: 20px;
 }
 
-.ncc-back-btn {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  background: transparent;
-  border: none;
-  color: #6b7280;
-  font-size: 15px;
-  font-weight: 500;
-  cursor: pointer;
-  padding: 6px 0;
-}
-
-.ncc-back-btn:hover {
-  color: #374151;
-}
-
 .ncc-topbar__title {
   font-size: 28px;
   font-weight: 700;
   color: #111827;
   margin: 0;
-}
-
-.ncc-ledger-badge {
-  background-color: #0f172a;
-  color: #ffffff;
-  border: none;
-  border-radius: 999px;
-  padding: 10px 22px;
-  font-size: 14px;
-  font-weight: 600;
-  cursor: default;
 }
 
 .ncc-body {
@@ -692,25 +664,6 @@
   font-family: 'SFMono-Regular', Menlo, monospace;
   font-weight: 500;
   font-size: 13px;
-}
-
-/* Floating help button */
-.ncc-help-btn {
-  position: fixed;
-  bottom: 28px;
-  right: 28px;
-  width: 52px;
-  height: 52px;
-  border-radius: 50%;
-  background-color: #0f172a;
-  color: #ffffff;
-  border: none;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-  box-shadow: 0 8px 20px rgba(15, 23, 42, 0.35);
-  z-index: 30;
 }
 
 @media (max-width: 1180px) {

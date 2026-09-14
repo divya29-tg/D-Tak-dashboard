@@ -4,10 +4,12 @@ import { ROUTES } from '@/app/router/routes';
 import dtakLogo from '@/assets/dtak-logo.png';
 import { getAdminProfile } from '@/utils/adminProfile';
 import { EdgeNodeMap } from '@/components/map/EdgeNodeMap';
+import { useAuth } from '@/app/router/AppRouter';
 import './EdgeNodeScreen.css';
 
 export function EdgeNodeScreen() {
   const navigate = useNavigate();
+  const { logout } = useAuth();
   const adminProfile = getAdminProfile();
 
   return (
@@ -84,9 +86,7 @@ export function EdgeNodeScreen() {
             type="button"
             className="enode-sidebar__logout-btn"
             onClick={() => {
-              sessionStorage.removeItem('dtak_admin_id');
-              sessionStorage.removeItem('dtak_admin_name');
-              sessionStorage.removeItem('dtak_admin_role');
+              logout();
               navigate(ROUTES.LOGIN);
             }}
           >

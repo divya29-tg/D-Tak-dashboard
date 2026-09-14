@@ -4,10 +4,12 @@ import { ROUTES } from '@/app/router/routes';
 import dtakLogo from '@/assets/dtak-logo.png';
 import { getAdminProfile } from '@/utils/adminProfile';
 import { MapView } from '@/components/map/MapView';
+import { useAuth } from '@/app/router/AppRouter';
 import './HomeScreen.css';
 
 export function HomeScreen() {
   const navigate = useNavigate();
+  const { logout } = useAuth();
   const adminProfile = getAdminProfile();
 
   return (
@@ -106,9 +108,7 @@ export function HomeScreen() {
             type="button"
             className="home-sidebar__logout-btn"
             onClick={() => {
-              sessionStorage.removeItem('dtak_admin_id');
-              sessionStorage.removeItem('dtak_admin_name');
-              sessionStorage.removeItem('dtak_admin_role');
+              logout();
               navigate(ROUTES.LOGIN);
             }}
           >

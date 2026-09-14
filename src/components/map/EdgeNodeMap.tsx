@@ -4,6 +4,7 @@ import workerUrl from 'maplibre-gl/dist/maplibre-gl-worker.mjs?worker&url';
 import 'maplibre-gl/dist/maplibre-gl.css';
 import { Plus, Minus } from 'lucide-react';
 import { getMapStyle } from '@/config/mapConfig';
+import { destinationPoint } from '@/utils/geo';
 import './EdgeNodeMap.css';
 
 maplibregl.setWorkerUrl(workerUrl);
@@ -29,31 +30,6 @@ const BACKPACK_ICON_PATHS =
 
 function iconSvg(paths: string, size: number): string {
   return `<svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${paths}</svg>`;
-}
-
-/** Forward geodesic: point at `distanceKm` from [lng,lat] along `bearingDeg`. */
-function destinationPoint(
-  center: [number, number],
-  bearingDeg: number,
-  distanceKm: number
-): [number, number] {
-  const R = 6371;
-  const bearing = (bearingDeg * Math.PI) / 180;
-  const lat1 = (center[1] * Math.PI) / 180;
-  const lng1 = (center[0] * Math.PI) / 180;
-  const angularDist = distanceKm / R;
-
-  const lat2 = Math.asin(
-    Math.sin(lat1) * Math.cos(angularDist) + Math.cos(lat1) * Math.sin(angularDist) * Math.cos(bearing)
-  );
-  const lng2 =
-    lng1 +
-    Math.atan2(
-      Math.sin(bearing) * Math.sin(angularDist) * Math.cos(lat1),
-      Math.cos(angularDist) - Math.sin(lat1) * Math.sin(lat2)
-    );
-
-  return [(lng2 * 180) / Math.PI, (lat2 * 180) / Math.PI];
 }
 
 interface EdgeNode {

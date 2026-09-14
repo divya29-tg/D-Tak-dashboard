@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { X, Plus } from 'lucide-react';
+import { useEffect, useState } from 'react';
+import { X, Plus, Loader2 } from 'lucide-react';
 import type { GroupItem } from '../types';
 import type { CandidateMember } from '../constants';
 import { gunService } from '@/services/gunService';
@@ -20,6 +20,7 @@ export function EditGroupModal({ isOpen, group, onClose, onSave, users }: EditGr
   const [groupName, setGroupName] = useState('');
   const [assignedAdmin, setAssignedAdmin] = useState('');
   const [memberIds, setMemberIds] = useState<string[]>([]);
+  const [isLoadingMembers, setIsLoadingMembers] = useState(false);
   const [selectedMemberRowId, setSelectedMemberRowId] = useState<string | null>(null);
   const [memberToRemove, setMemberToRemove] = useState<CandidateMember | null>(null);
   const [isAddUserPickerOpen, setIsAddUserPickerOpen] = useState(false);
@@ -35,7 +36,11 @@ export function EditGroupModal({ isOpen, group, onClose, onSave, users }: EditGr
     if (group) {
       setGroupName(group.groupName);
       setAssignedAdmin(group.assignedAdmin);
-      setMemberIds(group.members || []);
+      // The group list only carries a member *count* (the REST list
+      // endpoint doesn't return member ids), so group.members is always
+      // empty here -- fetch the real roster from Gun instead.
+      setMemberIds([]);
+      setIsLoadingMembers(true);
       setSelectedMemberRowId(null);
       setIsAddUserPickerOpen(false);
       setMemberActionError(null);
@@ -43,15 +48,32 @@ export function EditGroupModal({ isOpen, group, onClose, onSave, users }: EditGr
     }
   }
 
+  useEffect(() => {
+    if (!group) return;
+    let cancelled = false;
+    setIsLoadingMembers(true);
+    gunService.getGroupMembers(group.id).then((members) => {
+      if (!cancelled) {
+        setMemberIds(members);
+        setIsLoadingMembers(false);
+      }
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [group]);
+
   if (!isOpen || !group) return null;
 
   // Filter available roster users who are NOT yet in the group
   const nonMembers = users.filter((m) => !memberIds.includes(m.id));
 
-  // Current group members resolved from the real user roster
-  const currentMembers = memberIds
-    .map((id) => users.find((m) => m.id === id))
-    .filter((m): m is CandidateMember => Boolean(m));
+  // Current group members resolved from the real user roster. A member id
+  // Gun has but the REST user roster doesn't still gets shown (as its raw
+  // id) rather than silently disappearing.
+  const currentMembers = memberIds.map(
+    (id): CandidateMember => users.find((m) => m.id === id) || { id, name: id, callsign: id }
+  );
 
   const handleAddMember = async (candidateId: string) => {
     const candidate = users.find((m) => m.id === candidateId);
@@ -218,7 +240,12 @@ export function EditGroupModal({ isOpen, group, onClose, onSave, users }: EditGr
 
               {/* Scrollable Members List */}
               <div className="members-list-container">
-                {currentMembers.length === 0 ? (
+                {isLoadingMembers ? (
+                  <div className="empty-members">
+                    <Loader2 size={14} className="animate-spin" style={{ marginRight: 6 }} />
+                    Loading members...
+                  </div>
+                ) : currentMembers.length === 0 ? (
                   <div className="empty-members">No members in this group</div>
                 ) : (
                   currentMembers.map((member) => {

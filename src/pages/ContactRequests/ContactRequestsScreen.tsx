@@ -6,6 +6,7 @@ import dtakLogo from '@/assets/dtak-logo.png';
 import { gunService } from '@/services/gunService';
 import { contactRequestService } from '@/services/api/contactRequests';
 import { getAdminProfile } from '@/utils/adminProfile';
+import { useAuth } from '@/app/router/AppRouter';
 import './ContactRequestsScreen.css';
 
 type RequestStatus = 'pending' | 'accepted' | 'declined';
@@ -31,6 +32,7 @@ function getMyUsername(): string {
 
 export function ContactRequestsScreen() {
   const navigate = useNavigate();
+  const { logout } = useAuth();
   const adminProfile = getAdminProfile();
   const [requests, setRequests] = useState<Record<string, ContactRequestItem>>({});
   const [searchQuery, setSearchQuery] = useState('');
@@ -186,9 +188,7 @@ export function ContactRequestsScreen() {
             type="button"
             className="creq-sidebar__logout-btn"
             onClick={() => {
-              sessionStorage.removeItem('dtak_admin_id');
-              sessionStorage.removeItem('dtak_admin_name');
-              sessionStorage.removeItem('dtak_admin_role');
+              logout();
               navigate(ROUTES.LOGIN);
             }}
           >

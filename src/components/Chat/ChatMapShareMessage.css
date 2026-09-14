@@ -1,0 +1,93 @@
+.chat-map-card {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background-color: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 8px;
+  padding: 10px 12px;
+  color: #f3f4f6;
+  cursor: pointer;
+  max-width: 100%;
+  text-align: left;
+  transition: background-color 150ms ease, border-color 150ms ease;
+}
+
+.chat-map-card:hover:not(:disabled) {
+  background-color: rgba(34, 211, 238, 0.08);
+  border-color: rgba(34, 211, 238, 0.3);
+}
+
+.chat-map-card:disabled {
+  cursor: default;
+  opacity: 0.75;
+}
+
+.chat-map-card__icon {
+  width: 32px;
+  height: 32px;
+  min-width: 32px;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background-color: rgba(34, 211, 238, 0.12);
+  color: #22d3ee;
+}
+
+.chat-map-card__icon--alert,
+.chat-map-card__icon--sos {
+  background-color: rgba(239, 68, 68, 0.14);
+  color: #ef4444;
+}
+
+.chat-map-card__icon--casevac {
+  background-color: rgba(244, 63, 94, 0.14);
+  color: #f43f5e;
+}
+
+.chat-map-card__icon--geofence {
+  background-color: rgba(234, 179, 8, 0.14);
+  color: #eab308;
+}
+
+.chat-map-card__icon--pin {
+  background-color: rgba(143, 191, 63, 0.14);
+  color: #8fbf3f;
+}
+
+.chat-map-card__body {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.chat-map-card__title {
+  font-size: 13px;
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.chat-map-card__subtitle {
+  font-size: 11px;
+  color: #9ca3af;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.chat-map-card__chevron {
+  color: #6b7280;
+  flex-shrink: 0;
+}
+
+.chat-map-card__no-fix {
+  font-size: 10px;
+  color: #6b7280;
+  flex-shrink: 0;
+  white-space: nowrap;
+}
