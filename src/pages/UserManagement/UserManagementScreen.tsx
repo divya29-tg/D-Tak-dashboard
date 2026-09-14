@@ -1,15 +1,16 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { PenLine, XCircle, Ban, Lock, Search, Plus, User, Users, MapPin, ChevronRight, LogOut, Loader2, AlertCircle } from 'lucide-react';
+import { PenLine, Ban, Lock, Search, Plus, User, Users, MapPin, UserCheck, Network, Server, ChevronRight, LogOut, Loader2, AlertCircle, MessageSquare, ShieldCheck } from 'lucide-react';
 import { ROUTES } from '@/app/router/routes';
 import dtakLogo from '@/assets/dtak-logo.png';
 import { userService } from '@/services/api/users';
 import { userCache } from '@/cache/userCache';
+import { gunService } from '@/services/gunService';
+import { isAdminUser } from '@/utils/adminRegistry';
 import type { ApiUser } from '@/types/api';
+import { ChatModal } from '@/components/Chat/ChatModal';
 import { AddUserModal } from './components/AddUserModal';
 import { EditUserModal } from './components/EditUserModal';
-import { EnableUserModal } from './components/EnableUserModal';
-import { DisableUserModal } from './components/DisableUserModal';
 import { DeactivateUserModal } from './components/DeactivateUserModal';
 import { ActivateUserModal } from './components/ActivateUserModal';
 import { getAdminProfile } from '@/utils/adminProfile';
@@ -28,6 +29,7 @@ export interface UserItem {
   lastActive: string;
   isDisabled?: boolean;
   isDeactivated?: boolean;
+  isAdmin?: boolean;
 }
 
 function mapApiUserToUserItem(apiUser: ApiUser): UserItem {
@@ -54,12 +56,13 @@ function mapApiUserToUserItem(apiUser: ApiUser): UserItem {
     name: displayName,
     email: displayEmail,
     position: 'Operator',
-    role: 'Operator',
+    role: isAdminUser(username) ? 'Admin' : 'Operator',
     assignedGroup: apiUser.groupsCount ? `${apiUser.groupsCount} Group(s)` : 'Command Staff',
     status: displayStatus,
     lastActive: 'Active',
     isDisabled: isUserDisabled,
     isDeactivated: isUserInactive,
+    isAdmin: isAdminUser(username),
   };
 }
 
@@ -79,10 +82,9 @@ export function UserManagementScreen() {
   const [searchQuery, setSearchQuery] = useState('');
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [editingUser, setEditingUser] = useState<UserItem | null>(null);
-  const [enablingUser, setEnablingUser] = useState<UserItem | null>(null);
-  const [disablingUser, setDisablingUser] = useState<UserItem | null>(null);
   const [deactivatingUser, setDeactivatingUser] = useState<UserItem | null>(null);
   const [activatingUser, setActivatingUser] = useState<UserItem | null>(null);
+  const [chattingUser, setChattingUser] = useState<UserItem | null>(null);
 
   const fetchUsers = async () => {
     const cached = userService.getCachedUsers();
@@ -136,70 +138,6 @@ export function UserManagementScreen() {
   const suspendedCount = users.filter((u) => u.status === 'SUSPENDED').length;
   const pendingCount = users.filter((u) => u.status === 'PENDING').length;
 
-  const handleConfirmDisable = async () => {
-    if (!disablingUser) return;
-    const targetUsername = disablingUser.username || disablingUser.id;
-    if (!targetUsername || !targetUsername.trim()) {
-      throw new Error('Username is missing for selected user');
-    }
-    try {
-      setIsOperationLoading(true);
-      await userService.disableUser(targetUsername);
-      const target = targetUsername.trim().toLowerCase();
-      setUsers((prev) =>
-        prev.map((u) => {
-          const uName = (u.username || '').trim().toLowerCase();
-          const uId = (u.id || '').trim().toLowerCase();
-          if (uName === target || uId === target) {
-            return { ...u, status: 'DISABLED', isDisabled: true };
-          }
-          return u;
-        })
-      );
-      setApiCounts((prev) => ({
-        ...prev,
-        activeCount: Math.max(0, prev.activeCount - 1),
-        disabledCount: prev.disabledCount + 1,
-      }));
-      void fetchUsers();
-    } finally {
-      setIsOperationLoading(false);
-      setDisablingUser(null);
-    }
-  };
-
-  const handleConfirmEnable = async () => {
-    if (!enablingUser) return;
-    const targetUsername = enablingUser.username || enablingUser.id;
-    if (!targetUsername || !targetUsername.trim()) {
-      throw new Error('Username is missing for selected user');
-    }
-    try {
-      setIsOperationLoading(true);
-      await userService.enableUser(targetUsername);
-      const target = targetUsername.trim().toLowerCase();
-      setUsers((prev) =>
-        prev.map((u) => {
-          const uName = (u.username || '').trim().toLowerCase();
-          const uId = (u.id || '').trim().toLowerCase();
-          if (uName === target || uId === target) {
-            return { ...u, status: 'ACTIVE', isDisabled: false };
-          }
-          return u;
-        })
-      );
-      setApiCounts((prev) => ({
-        ...prev,
-        activeCount: prev.activeCount + 1,
-        disabledCount: Math.max(0, prev.disabledCount - 1),
-      }));
-      void fetchUsers();
-    } finally {
-      setIsOperationLoading(false);
-      setEnablingUser(null);
-    }
-  };
-
   const handleConfirmDeactivate = async () => {
     if (!deactivatingUser) return;
     const targetUsername = deactivatingUser.username || deactivatingUser.id;
@@ -209,6 +147,9 @@ export function UserManagementScreen() {
     try {
       setIsOperationLoading(true);
       await userService.deleteUser(targetUsername);
+      // Wipe the user's Gun.js profile and flag them deactivated so the
+      // shared dchat graph reflects that they can no longer act as themselves.
+      await gunService.deactivateUser(targetUsername);
       const target = targetUsername.trim().toLowerCase();
       setUsers((prev) =>
         prev.map((u) => {
@@ -240,6 +181,8 @@ export function UserManagementScreen() {
     try {
       setIsOperationLoading(true);
       await userService.activateUser(targetUsername);
+      // Restore the user's Gun.js profile so they can act as themselves again.
+      await gunService.activateUser(targetUsername);
       const target = targetUsername.trim().toLowerCase();
       setUsers((prev) =>
         prev.map((u) => {
@@ -262,34 +205,28 @@ export function UserManagementScreen() {
     }
   };
 
-  const handleAddUser = (data: {
-    fullName: string;
-    userName: string;
-    email: string;
-    position: string;
-    role: string;
-    assignedGroup: string;
-  }) => {
+  const handleAddUser = (data: { userName: string; isAdmin: boolean }) => {
     const username = data.userName.trim();
     const newUserItem: UserItem = {
       id: username,
       username: username,
-      fullName: data.fullName.trim(),
-      name: data.fullName.trim(),
-      email: data.email.trim() || `${username.toLowerCase()}@centcom.mil`,
-      position: data.position || 'Operator',
-      role: data.role || 'Operator',
-      assignedGroup: data.assignedGroup || 'Command Staff',
+      fullName: username,
+      name: username,
+      email: `${username.toLowerCase()}@centcom.mil`,
+      position: 'Operator',
+      role: data.isAdmin ? 'Admin' : 'Operator',
+      assignedGroup: 'Command Staff',
       status: 'ACTIVE',
       lastActive: 'Active',
       isDisabled: false,
       isDeactivated: false,
+      isAdmin: data.isAdmin,
     };
     userCache.addUser({
       alias: username,
       username: username,
-      name: data.fullName.trim(),
-      email: data.email.trim(),
+      name: username,
+      email: newUserItem.email,
       status: 'active',
       deviceCount: 0,
       groupsCount: 1,
@@ -310,6 +247,7 @@ export function UserManagementScreen() {
     position: string;
     role: string;
     assignedGroup: string;
+    isAdmin: boolean;
   }) => {
     if (!editingUser) return;
     const targetUsername = editingUser.username || editingUser.id;
@@ -339,8 +277,9 @@ export function UserManagementScreen() {
               name: newName || u.name,
               email: newEmail || u.email,
               position: data.position || u.position,
-              role: data.role || u.role,
+              role: data.isAdmin ? 'Admin' : data.role || u.role,
               assignedGroup: data.assignedGroup || u.assignedGroup,
+              isAdmin: data.isAdmin,
             };
           }
           return u;
@@ -402,6 +341,30 @@ export function UserManagementScreen() {
           >
             <Users size={18} className="sidebar__nav-icon" />
             <span>GROUPS</span>
+          </div>
+
+          <div
+            className="sidebar__nav-item"
+            onClick={() => navigate(ROUTES.CONTACT_REQUESTS)}
+          >
+            <UserCheck size={18} className="sidebar__nav-icon" />
+            <span>REQUESTS</span>
+          </div>
+
+          <div
+            className="sidebar__nav-item"
+            onClick={() => navigate(ROUTES.EDGE_NODES)}
+          >
+            <Network size={18} className="sidebar__nav-icon" />
+            <span>EDGE NODE</span>
+          </div>
+
+          <div
+            className="sidebar__nav-item"
+            onClick={() => navigate(ROUTES.NCC)}
+          >
+            <Server size={18} className="sidebar__nav-icon" />
+            <span>NCC</span>
           </div>
         </nav>
 
@@ -536,7 +499,14 @@ export function UserManagementScreen() {
                     filteredUsers.map((user) => (
                       <tr key={user.id}>
                         <td className="cell-id">{user.id}</td>
-                        <td className="cell-name">{user.fullName}</td>
+                        <td className="cell-name">
+                          {user.fullName}
+                          {user.isAdmin && (
+                            <span className="admin-badge" title="Admin Console access">
+                              <ShieldCheck size={11} /> ADMIN
+                            </span>
+                          )}
+                        </td>
                         <td className="cell-role">{user.role}</td>
                         <td className="cell-status">
                           <span className={`status-badge status-badge--${user.status.toLowerCase()}`}>
@@ -547,6 +517,15 @@ export function UserManagementScreen() {
                         <td className="cell-actions">
                           <button
                             type="button"
+                            className="action-btn action-btn--chat"
+                            aria-label="Open chat"
+                            onClick={() => setChattingUser(user)}
+                          >
+                            <MessageSquare size={14} />
+                          </button>
+
+                          <button
+                            type="button"
                             className="action-btn action-btn--edit"
                             aria-label="Edit user"
                             onClick={() => setEditingUser(user)}
@@ -554,28 +533,6 @@ export function UserManagementScreen() {
                           >
                             <PenLine size={14} />
                           </button>
-
-                          {user.isDisabled ? (
-                            <button
-                              type="button"
-                              className="action-btn action-btn--blue"
-                              aria-label="Enable user"
-                              onClick={() => setEnablingUser(user)}
-                              disabled={isOperationLoading}
-                            >
-                              <Lock size={20} color="#2058FF" style={{ color: '#2058FF' }} />
-                            </button>
-                          ) : (
-                            <button
-                              type="button"
-                              className="action-btn action-btn--warn"
-                              aria-label="Disable user"
-                              onClick={() => setDisablingUser(user)}
-                              disabled={isOperationLoading}
-                            >
-                              <XCircle size={14} />
-                            </button>
-                          )}
 
                           {user.isDeactivated ? (
                             <button
@@ -627,22 +584,6 @@ export function UserManagementScreen() {
         onEditUser={handleEditUser}
       />
 
-      <EnableUserModal
-        key={`enable-${enablingUser?.id}`}
-        isOpen={!!enablingUser}
-        user={enablingUser}
-        onClose={() => setEnablingUser(null)}
-        onConfirm={handleConfirmEnable}
-      />
-
-      <DisableUserModal
-        key={`disable-${disablingUser?.id}`}
-        isOpen={!!disablingUser}
-        user={disablingUser}
-        onClose={() => setDisablingUser(null)}
-        onConfirm={handleConfirmDisable}
-      />
-
       <DeactivateUserModal
         key={`deactivate-${deactivatingUser?.id}`}
         isOpen={!!deactivatingUser}
@@ -657,6 +598,14 @@ export function UserManagementScreen() {
         user={activatingUser}
         onClose={() => setActivatingUser(null)}
         onConfirm={handleConfirmActivate}
+      />
+
+      <ChatModal
+        isOpen={!!chattingUser}
+        onClose={() => setChattingUser(null)}
+        mode="direct"
+        targetId={chattingUser?.username || chattingUser?.id || ''}
+        targetName={chattingUser?.fullName || chattingUser?.username || ''}
       />
     </div>
   );

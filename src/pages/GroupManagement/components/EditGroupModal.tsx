@@ -1,7 +1,8 @@
 import { useState } from 'react';
 import { X, Plus } from 'lucide-react';
 import type { GroupItem } from '../types';
-import { CANDIDATE_MEMBERS, ADMIN_OPTIONS, type CandidateMember } from '../constants';
+import type { CandidateMember } from '../constants';
+import { gunService } from '@/services/gunService';
 import { RemoveGroupMemberModal } from './RemoveGroupMemberModal';
 import { Toast } from './Toast';
 import './GroupModal.css';
@@ -11,16 +12,18 @@ interface EditGroupModalProps {
   group: GroupItem | null;
   onClose: () => void;
   onSave: (updatedGroup: GroupItem) => void;
+  users: CandidateMember[];
 }
 
-export function EditGroupModal({ isOpen, group, onClose, onSave }: EditGroupModalProps) {
+export function EditGroupModal({ isOpen, group, onClose, onSave, users }: EditGroupModalProps) {
   const [prevGroup, setPrevGroup] = useState<GroupItem | null>(null);
   const [groupName, setGroupName] = useState('');
-  const [assignedAdmin, setAssignedAdmin] = useState(ADMIN_OPTIONS[0]);
+  const [assignedAdmin, setAssignedAdmin] = useState('');
   const [memberIds, setMemberIds] = useState<string[]>([]);
   const [selectedMemberRowId, setSelectedMemberRowId] = useState<string | null>(null);
   const [memberToRemove, setMemberToRemove] = useState<CandidateMember | null>(null);
   const [isAddUserPickerOpen, setIsAddUserPickerOpen] = useState(false);
+  const [memberActionError, setMemberActionError] = useState<string | null>(null);
   const [toastInfo, setToastInfo] = useState<{ isOpen: boolean; title: string; message: string }>({
     isOpen: false,
     title: '',
@@ -35,41 +38,59 @@ export function EditGroupModal({ isOpen, group, onClose, onSave }: EditGroupModa
       setMemberIds(group.members || []);
       setSelectedMemberRowId(null);
       setIsAddUserPickerOpen(false);
+      setMemberActionError(null);
       setToastInfo({ isOpen: false, title: '', message: '' });
     }
   }
 
   if (!isOpen || !group) return null;
 
-  // Filter available candidate members who are NOT yet in the group
-  const nonMembers = CANDIDATE_MEMBERS.filter((m) => !memberIds.includes(m.id));
+  // Filter available roster users who are NOT yet in the group
+  const nonMembers = users.filter((m) => !memberIds.includes(m.id));
 
-  // Current group members resolved from candidate list
+  // Current group members resolved from the real user roster
   const currentMembers = memberIds
-    .map((id) => CANDIDATE_MEMBERS.find((m) => m.id === id))
+    .map((id) => users.find((m) => m.id === id))
     .filter((m): m is CandidateMember => Boolean(m));
 
-  const handleAddMember = (candidateId: string) => {
-    const candidate = CANDIDATE_MEMBERS.find((m) => m.id === candidateId);
-    setMemberIds((prev) => [...prev, candidateId]);
+  const handleAddMember = async (candidateId: string) => {
+    const candidate = users.find((m) => m.id === candidateId);
     setIsAddUserPickerOpen(false);
+    setMemberActionError(null);
 
-    if (candidate) {
-      setToastInfo({
-        isOpen: true,
-        title: 'User Added',
-        message: `${candidate.name} has been added to ${groupName || group.groupName}.`,
-      });
+    try {
+      // Add the member on the real Gun.js group graph, not just the local list.
+      await gunService.addMemberToGroup(group.id, candidateId);
+      setMemberIds((prev) => [...prev, candidateId]);
+
+      if (candidate) {
+        setToastInfo({
+          isOpen: true,
+          title: 'User Added',
+          message: `${candidate.name} has been added to ${groupName || group.groupName}.`,
+        });
+      }
+    } catch (err) {
+      setMemberActionError(err instanceof Error ? err.message : 'Failed to add member');
     }
   };
 
-  const handleConfirmRemoveMember = () => {
+  const handleConfirmRemoveMember = async () => {
     if (!memberToRemove) return;
-    setMemberIds((prev) => prev.filter((id) => id !== memberToRemove.id));
-    if (selectedMemberRowId === memberToRemove.id) {
-      setSelectedMemberRowId(null);
+    setMemberActionError(null);
+
+    try {
+      // Remove the member from the real Gun.js group graph so they actually lose access.
+      await gunService.removeMemberFromGroup(group.id, memberToRemove.id);
+      setMemberIds((prev) => prev.filter((id) => id !== memberToRemove.id));
+      if (selectedMemberRowId === memberToRemove.id) {
+        setSelectedMemberRowId(null);
+      }
+    } catch (err) {
+      setMemberActionError(err instanceof Error ? err.message : 'Failed to remove member');
+    } finally {
+      setMemberToRemove(null);
     }
-    setMemberToRemove(null);
   };
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -102,6 +123,23 @@ export function EditGroupModal({ isOpen, group, onClose, onSave }: EditGroupModa
             </button>
           </div>
 
+          {memberActionError && (
+            <div
+              style={{
+                fontSize: '12px',
+                color: '#ef4444',
+                backgroundColor: 'rgba(239, 68, 68, 0.1)',
+                border: '1px solid rgba(239, 68, 68, 0.25)',
+                borderRadius: '8px',
+                padding: '8px 12px',
+                textAlign: 'center',
+              }}
+              role="alert"
+            >
+              {memberActionError}
+            </div>
+          )}
+
           <form onSubmit={handleSubmit} className="group-modal-form">
             <div className="form-group">
               <label className="form-label">GROUP NAME</label>
@@ -120,12 +158,17 @@ export function EditGroupModal({ isOpen, group, onClose, onSave }: EditGroupModa
                 className="form-select"
                 value={assignedAdmin}
                 onChange={(e) => setAssignedAdmin(e.target.value)}
+                disabled={users.length === 0}
               >
-                {ADMIN_OPTIONS.map((admin) => (
-                  <option key={admin} value={admin}>
-                    {admin}
-                  </option>
-                ))}
+                {users.length === 0 ? (
+                  <option value={assignedAdmin}>{assignedAdmin || 'No users available'}</option>
+                ) : (
+                  users.map((u) => (
+                    <option key={u.id} value={u.id}>
+                      {u.name} ({u.id})
+                    </option>
+                  ))
+                )}
               </select>
             </div>
 

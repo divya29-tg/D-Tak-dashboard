@@ -578,6 +578,32 @@
   background-color: rgba(32, 88, 255, 0.1);
 }
 
+.admin-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  margin-left: 8px;
+  padding: 1px 6px;
+  border-radius: 4px;
+  background-color: rgba(143, 191, 63, 0.14);
+  border: 1px solid rgba(143, 191, 63, 0.35);
+  color: #8fbf3f;
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  vertical-align: middle;
+}
+
+.action-btn--chat {
+  border-color: rgba(34, 211, 238, 0.4);
+  color: #22D3EE;
+}
+
+.action-btn--chat:hover {
+  border-color: #22D3EE;
+  background-color: rgba(34, 211, 238, 0.1);
+}
+
 .table-footer {
   padding: 12px 16px;
   background-color: #0b0e14;

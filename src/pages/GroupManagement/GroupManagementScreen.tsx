@@ -1,19 +1,26 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { PenLine, XCircle, Ban, Lock, Search, User, Users, MapPin, ChevronRight, LogOut, Loader2 } from 'lucide-react';
+import { PenLine, Ban, Lock, Search, User, Users, MapPin, UserCheck, Network, Server, ChevronRight, LogOut, Loader2, MessageSquare } from 'lucide-react';
 import { ROUTES } from '@/app/router/routes';
 import dtakLogo from '@/assets/dtak-logo.png';
 import { groupService } from '@/services/api/groups';
-import type { ApiGroup } from '@/types/api';
+import { userService } from '@/services/api/users';
+import type { ApiGroup, ApiUser } from '@/types/api';
+import { ChatModal } from '@/components/Chat/ChatModal';
 import { CreateGroupModal } from './components/CreateGroupModal';
 import { EditGroupModal } from './components/EditGroupModal';
-import { DisableGroupModal } from './components/DisableGroupModal';
-import { EnableGroupModal } from './components/EnableGroupModal';
 import { DeactivateGroupModal } from './components/DeactivateGroupModal';
 import { ActivateGroupModal } from './components/ActivateGroupModal';
 import { getAdminProfile } from '@/utils/adminProfile';
 import type { GroupItem } from './types';
+import type { CandidateMember } from './constants';
 import './GroupManagementScreen.css';
+
+function mapApiUserToCandidate(apiUser: ApiUser): CandidateMember {
+  const username = apiUser.username || apiUser.alias;
+  const displayName = apiUser.name && apiUser.name !== 'N/A' ? apiUser.name : username;
+  return { id: username, name: displayName, callsign: username };
+}
 
 export type { GroupItem };
 
@@ -34,14 +41,27 @@ export function GroupManagementScreen() {
   const navigate = useNavigate();
   const adminProfile = getAdminProfile();
   const [groups, setGroups] = useState<GroupItem[]>([]);
+  const [rosterUsers, setRosterUsers] = useState<CandidateMember[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [editingGroup, setEditingGroup] = useState<GroupItem | null>(null);
-  const [disablingGroup, setDisablingGroup] = useState<GroupItem | null>(null);
-  const [enablingGroup, setEnablingGroup] = useState<GroupItem | null>(null);
   const [deactivatingGroup, setDeactivatingGroup] = useState<GroupItem | null>(null);
   const [activatingGroup, setActivatingGroup] = useState<GroupItem | null>(null);
+  const [chattingGroup, setChattingGroup] = useState<GroupItem | null>(null);
+
+  const fetchRosterUsers = async () => {
+    const cached = userService.getCachedUsers();
+    if (cached) {
+      setRosterUsers(cached.users.map(mapApiUserToCandidate));
+    }
+    try {
+      const res = await userService.getUsers();
+      setRosterUsers(res.users.map(mapApiUserToCandidate));
+    } catch {
+      // Keep showing cached roster if the background refresh fails
+    }
+  };
 
   const fetchGroups = async () => {
     const cached = groupService.getCachedGroups();
@@ -75,18 +95,10 @@ export function GroupManagementScreen() {
 
   useEffect(() => {
     void fetchGroups();
+    void fetchRosterUsers();
   }, []);
 
-  const handleCreateGroup = (newGroupData: Omit<GroupItem, 'id'>) => {
-    const nextId = `G-${String(groups.length + 1).padStart(3, '0')}`;
-    const newGroup: GroupItem = {
-      ...newGroupData,
-      id: nextId,
-      membersCount: newGroupData.members ? newGroupData.members.length : 0,
-      status: 'ACTIVE',
-      isDisabled: false,
-      isDeactivated: false,
-    };
+  const handleCreateGroup = (newGroup: GroupItem) => {
     setGroups((prev) => [...prev, newGroup]);
   };
 
@@ -101,28 +113,6 @@ export function GroupManagementScreen() {
           : g
       )
     );
-  };
-
-  const handleConfirmDisable = () => {
-    if (!disablingGroup) return;
-    setGroups((prev) =>
-      prev.map((g) =>
-        g.id === disablingGroup.id ? { ...g, isDisabled: true, status: 'INACTIVE' } : g
-      )
-    );
-    setDisablingGroup(null);
-  };
-
-  const handleConfirmEnable = () => {
-    if (!enablingGroup) return;
-    setGroups((prev) =>
-      prev.map((g) =>
-        g.id === enablingGroup.id
-          ? { ...g, isDisabled: false, status: 'ACTIVE' }
-          : g
-      )
-    );
-    setEnablingGroup(null);
   };
 
   const handleConfirmDeactivate = () => {
@@ -196,6 +186,30 @@ export function GroupManagementScreen() {
             <div className="grp-sidebar__active-indicator" />
             <Users size={18} className="grp-sidebar__nav-icon" />
             <span>GROUPS</span>
+          </div>
+
+          <div
+            className="grp-sidebar__nav-item"
+            onClick={() => navigate(ROUTES.CONTACT_REQUESTS)}
+          >
+            <UserCheck size={18} className="grp-sidebar__nav-icon" />
+            <span>REQUESTS</span>
+          </div>
+
+          <div
+            className="grp-sidebar__nav-item"
+            onClick={() => navigate(ROUTES.EDGE_NODES)}
+          >
+            <Network size={18} className="grp-sidebar__nav-icon" />
+            <span>EDGE NODE</span>
+          </div>
+
+          <div
+            className="grp-sidebar__nav-item"
+            onClick={() => navigate(ROUTES.NCC)}
+          >
+            <Server size={18} className="grp-sidebar__nav-icon" />
+            <span>NCC</span>
           </div>
         </nav>
 
@@ -312,32 +326,21 @@ export function GroupManagementScreen() {
                         <div className="grp-actions-group">
                           <button
                             type="button"
+                            className="grp-action-btn grp-action-btn--chat"
+                            title="Open group chat"
+                            onClick={() => setChattingGroup(group)}
+                          >
+                            <MessageSquare size={13} />
+                          </button>
+
+                          <button
+                            type="button"
                             className="grp-action-btn grp-action-btn--edit"
                             title="Edit group"
                             onClick={() => setEditingGroup(group)}
                           >
                             <PenLine size={13} />
                           </button>
-
-                          {group.isDisabled ? (
-                            <button
-                              type="button"
-                              className="grp-action-btn grp-action-btn--blue"
-                              title="Enable group"
-                              onClick={() => setEnablingGroup(group)}
-                            >
-                              <Lock size={20} color="#2058FF" style={{ color: '#2058FF' }} />
-                            </button>
-                          ) : (
-                            <button
-                              type="button"
-                              className="grp-action-btn grp-action-btn--toggle"
-                              title="Disable group"
-                              onClick={() => setDisablingGroup(group)}
-                            >
-                              <XCircle size={13} />
-                            </button>
-                          )}
 
                           {group.isDeactivated ? (
                             <button
@@ -377,6 +380,7 @@ export function GroupManagementScreen() {
         isOpen={isCreateModalOpen}
         onClose={() => setIsCreateModalOpen(false)}
         onCreate={handleCreateGroup}
+        users={rosterUsers}
       />
 
       <EditGroupModal
@@ -385,22 +389,7 @@ export function GroupManagementScreen() {
         group={editingGroup}
         onClose={() => setEditingGroup(null)}
         onSave={handleSaveEditGroup}
-      />
-
-      <DisableGroupModal
-        key={`disable-${disablingGroup?.id}`}
-        isOpen={!!disablingGroup}
-        group={disablingGroup}
-        onClose={() => setDisablingGroup(null)}
-        onConfirm={handleConfirmDisable}
-      />
-
-      <EnableGroupModal
-        key={`enable-${enablingGroup?.id}`}
-        isOpen={!!enablingGroup}
-        group={enablingGroup}
-        onClose={() => setEnablingGroup(null)}
-        onConfirm={handleConfirmEnable}
+        users={rosterUsers}
       />
 
       <DeactivateGroupModal
@@ -417,6 +406,14 @@ export function GroupManagementScreen() {
         group={activatingGroup}
         onClose={() => setActivatingGroup(null)}
         onConfirm={handleConfirmActivate}
+      />
+
+      <ChatModal
+        isOpen={!!chattingGroup}
+        onClose={() => setChattingGroup(null)}
+        mode="group"
+        targetId={chattingGroup?.id || ''}
+        targetName={chattingGroup?.groupName || ''}
       />
     </div>
   );

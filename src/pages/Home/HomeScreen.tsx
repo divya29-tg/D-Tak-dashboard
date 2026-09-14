@@ -1,5 +1,5 @@
 import { useNavigate } from 'react-router-dom';
-import { User, Users, MapPin, ChevronRight, LogOut } from 'lucide-react';
+import { User, Users, MapPin, UserCheck, Network, Server, ChevronRight, LogOut } from 'lucide-react';
 import { ROUTES } from '@/app/router/routes';
 import dtakLogo from '@/assets/dtak-logo.png';
 import { getAdminProfile } from '@/utils/adminProfile';
@@ -51,6 +51,33 @@ export function HomeScreen() {
           >
             <Users size={18} className="home-sidebar__nav-icon" />
             <span>GROUPS</span>
+          </div>
+
+          {/* Order 4: REQUESTS */}
+          <div
+            className="home-sidebar__nav-item"
+            onClick={() => navigate(ROUTES.CONTACT_REQUESTS)}
+          >
+            <UserCheck size={18} className="home-sidebar__nav-icon" />
+            <span>REQUESTS</span>
+          </div>
+
+          {/* Order 5: EDGE NODE */}
+          <div
+            className="home-sidebar__nav-item"
+            onClick={() => navigate(ROUTES.EDGE_NODES)}
+          >
+            <Network size={18} className="home-sidebar__nav-icon" />
+            <span>EDGE NODE</span>
+          </div>
+
+          {/* Order 6: NCC */}
+          <div
+            className="home-sidebar__nav-item"
+            onClick={() => navigate(ROUTES.NCC)}
+          >
+            <Server size={18} className="home-sidebar__nav-icon" />
+            <span>NCC</span>
           </div>
         </nav>
 

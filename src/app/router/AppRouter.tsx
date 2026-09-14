@@ -4,6 +4,9 @@ import { AdminLoginScreen } from '@/pages/AdminLogin/AdminLoginScreen';
 import { HomeScreen } from '@/pages/Home/HomeScreen';
 import { UserManagementScreen } from '@/pages/UserManagement/UserManagementScreen';
 import { GroupManagementScreen } from '@/pages/GroupManagement/GroupManagementScreen';
+import { ContactRequestsScreen } from '@/pages/ContactRequests/ContactRequestsScreen';
+import { EdgeNodeScreen } from '@/pages/EdgeNode/EdgeNodeScreen';
+import { NCCScreen } from '@/pages/NCC/NCCScreen';
 import { ROUTES } from './routes';
 
 if (typeof window !== 'undefined') {
@@ -67,6 +70,30 @@ export function AppRouter() {
           element={
             <ProtectedRoute>
               <GroupManagementScreen />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path={ROUTES.CONTACT_REQUESTS}
+          element={
+            <ProtectedRoute>
+              <ContactRequestsScreen />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path={ROUTES.EDGE_NODES}
+          element={
+            <ProtectedRoute>
+              <EdgeNodeScreen />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path={ROUTES.NCC}
+          element={
+            <ProtectedRoute>
+              <NCCScreen />
             </ProtectedRoute>
           }
         />

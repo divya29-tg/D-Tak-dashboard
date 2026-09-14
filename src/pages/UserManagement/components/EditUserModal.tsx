@@ -1,6 +1,7 @@
 import { useState, type FormEvent } from 'react';
 import { X, ChevronDown } from 'lucide-react';
 import type { UserItem } from '../UserManagementScreen';
+import { isAdminUser, setAdminUser, renameAdminUser } from '@/utils/adminRegistry';
 import './UserModal.css';
 
 export interface EditUserData {
@@ -10,6 +11,7 @@ export interface EditUserData {
   position: string;
   role: string;
   assignedGroup: string;
+  isAdmin: boolean;
 }
 
 interface EditUserModalProps {
@@ -51,6 +53,7 @@ export function EditUserModal({ isOpen, user, onClose, onEditUser }: EditUserMod
   const [position, setPosition] = useState(user?.position || '');
   const [role, setRole] = useState(user?.role || 'Commander');
   const [assignedGroup, setAssignedGroup] = useState(user?.assignedGroup || 'Command Staff');
+  const [isAdmin, setIsAdmin] = useState(isAdminUser(user?.username || user?.name || ''));
 
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -68,13 +71,22 @@ export function EditUserModal({ isOpen, user, onClose, onEditUser }: EditUserMod
     try {
       setIsSubmitting(true);
       setError(null);
+
+      const cleanUserName = userName.trim();
+      const originalUserName = (user?.username || user?.name || '').trim();
+      if (originalUserName && originalUserName !== cleanUserName) {
+        renameAdminUser(originalUserName, cleanUserName);
+      }
+      setAdminUser(cleanUserName, isAdmin);
+
       await onEditUser?.({
         fullName: fullName.trim(),
-        userName: userName.trim(),
+        userName: cleanUserName,
         email: email.trim(),
         position: position.trim(),
         role: role.trim(),
         assignedGroup: assignedGroup.trim(),
+        isAdmin,
       });
       onClose();
     } catch (err) {
@@ -212,6 +224,16 @@ export function EditUserModal({ isOpen, user, onClose, onEditUser }: EditUserMod
               <ChevronDown size={16} className="user-modal-select-icon" />
             </div>
           </div>
+
+          <label className="user-modal-checkbox-field">
+            <input
+              type="checkbox"
+              checked={isAdmin}
+              onChange={(e) => setIsAdmin(e.target.checked)}
+              disabled={isSubmitting}
+            />
+            <span>Grant Admin Access (can log into the Admin Console)</span>
+          </label>
 
           <div className="user-modal-actions">
             <button

@@ -3,4 +3,7 @@ export const ROUTES = {
   LOGIN: '/login',
   USER_MANAGEMENT: '/users',
   GROUP_MANAGEMENT: '/groups',
+  CONTACT_REQUESTS: '/requests',
+  EDGE_NODES: '/edge-nodes',
+  NCC: '/ncc',
 } as const;

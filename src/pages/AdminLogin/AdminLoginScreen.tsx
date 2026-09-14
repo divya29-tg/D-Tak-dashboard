@@ -3,7 +3,13 @@ import { useNavigate } from 'react-router-dom';
 import { X } from 'lucide-react';
 import { ROUTES } from '@/app/router/routes';
 import dtakLogo from '@/assets/dtak-logo.png';
+import { gunService } from '@/services/gunService';
+import { isAdminUser, setAdminUser, getAdminUsernames } from '@/utils/adminRegistry';
 import './AdminLoginScreen.css';
+
+// Gun/SEA requires an 8+ char secret; the 6-digit PIN is stretched into one
+// by appending this fixed suffix, so the operator only ever types the PIN.
+const GUN_PIN_SUFFIX = '@Trus';
 
 export function AdminLoginScreen() {
   const navigate = useNavigate();
@@ -11,6 +17,7 @@ export function AdminLoginScreen() {
   const [adminId, setAdminId] = useState('');
   const [pin, setPin] = useState('');
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [isAuthenticating, setIsAuthenticating] = useState(false);
 
   const inputRefs = useRef<(HTMLInputElement | null)[]>([]);
 
@@ -95,7 +102,7 @@ export function AdminLoginScreen() {
     }
   };
 
-  const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
+  const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
 
     if (!pin) {
@@ -108,16 +115,56 @@ export function AdminLoginScreen() {
       return;
     }
 
+    const gunAlias = adminId.trim();
+    const gunSecret = `${pin}${GUN_PIN_SUFFIX}`;
+
+    // Bootstrap path: env credentials are only honored to create the very
+    // first admin, before the Users list has anyone flagged as admin.
     const expectedAdminId = import.meta.env.VITE_LOCAL_ADMIN_ID;
     const expectedPin = import.meta.env.VITE_LOCAL_ADMIN_PIN;
+    const isBootstrap =
+      getAdminUsernames().length === 0 && gunAlias === expectedAdminId && pin === expectedPin;
 
-    if (adminId.trim() === expectedAdminId && pin === expectedPin) {
-      setErrorMessage(null);
-      sessionStorage.setItem('dtak_admin_id', adminId.trim());
-      navigate(ROUTES.HOME);
-    } else {
-      setErrorMessage('Invalid Admin ID or PIN');
+    // Who gets into the console is controlled by the Users list (the "Grant
+    // Admin Access" flag), not a fixed credential.
+    if (!isAdminUser(gunAlias) && !isBootstrap) {
+      setErrorMessage('This account is not authorized for admin access');
+      return;
     }
+
+    setErrorMessage(null);
+    setIsAuthenticating(true);
+
+    // Authenticate the admin against the Gun.js dchat network so the console
+    // can send/read messages as this admin identity for the rest of the session.
+    try {
+      await gunService.loginUser(gunAlias, gunSecret);
+    } catch (loginError) {
+      if (isBootstrap) {
+        try {
+          await gunService.registerUser(gunAlias, gunSecret);
+          await gunService.loginUser(gunAlias, gunSecret);
+        } catch (gunError) {
+          console.error('Gun.js admin authentication failed:', gunError);
+          setIsAuthenticating(false);
+          setErrorMessage('Failed to reach the dchat network. Please try again.');
+          return;
+        }
+      } else {
+        console.error('Gun.js admin authentication failed:', loginError);
+        setIsAuthenticating(false);
+        setErrorMessage('Invalid Admin ID or PIN');
+        return;
+      }
+    }
+
+    if (isBootstrap) {
+      setAdminUser(gunAlias, true);
+    }
+
+    setIsAuthenticating(false);
+    sessionStorage.setItem('dtak_admin_id', gunAlias);
+    navigate(ROUTES.HOME);
   };
 
   return (
@@ -186,8 +233,8 @@ export function AdminLoginScreen() {
             </div>
           </div>
 
-          <button type="submit" className="login-submit-btn">
-            Login
+          <button type="submit" className="login-submit-btn" disabled={isAuthenticating}>
+            {isAuthenticating ? 'Connecting...' : 'Login'}
           </button>
         </form>
       </div>

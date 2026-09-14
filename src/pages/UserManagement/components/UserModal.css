@@ -142,6 +142,27 @@
   pointer-events: none;
 }
 
+.user-modal-checkbox-field {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 4px;
+  cursor: pointer;
+}
+
+.user-modal-checkbox-field input[type='checkbox'] {
+  width: 16px;
+  height: 16px;
+  accent-color: #8fbf3f;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.user-modal-checkbox-field span {
+  font-size: 12px;
+  color: #c9c9d1;
+}
+
 .user-modal-actions {
   display: grid;
   grid-template-columns: 1fr 1fr;

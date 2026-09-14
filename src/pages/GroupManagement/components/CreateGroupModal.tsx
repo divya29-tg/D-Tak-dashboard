@@ -1,7 +1,8 @@
 import { useState } from 'react';
 import { X, Plus } from 'lucide-react';
 import type { GroupItem } from '../types';
-import { CANDIDATE_MEMBERS, ADMIN_OPTIONS, type CandidateMember } from '../constants';
+import type { CandidateMember } from '../constants';
+import { gunService } from '@/services/gunService';
 import { RemoveGroupMemberModal } from './RemoveGroupMemberModal';
 import { Toast } from './Toast';
 import './GroupModal.css';
@@ -9,16 +10,19 @@ import './GroupModal.css';
 interface CreateGroupModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onCreate: (group: Omit<GroupItem, 'id'>) => void;
+  onCreate: (group: GroupItem) => void;
+  users: CandidateMember[];
 }
 
-export function CreateGroupModal({ isOpen, onClose, onCreate }: CreateGroupModalProps) {
+export function CreateGroupModal({ isOpen, onClose, onCreate, users }: CreateGroupModalProps) {
   const [groupName, setGroupName] = useState('');
-  const [assignedAdmin, setAssignedAdmin] = useState(ADMIN_OPTIONS[0]);
+  const [assignedAdmin, setAssignedAdmin] = useState('');
   const [memberIds, setMemberIds] = useState<string[]>([]);
   const [selectedMemberRowId, setSelectedMemberRowId] = useState<string | null>(null);
   const [memberToRemove, setMemberToRemove] = useState<CandidateMember | null>(null);
   const [isAddUserPickerOpen, setIsAddUserPickerOpen] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const [toastInfo, setToastInfo] = useState<{ isOpen: boolean; title: string; message: string }>({
     isOpen: false,
     title: '',
@@ -27,14 +31,16 @@ export function CreateGroupModal({ isOpen, onClose, onCreate }: CreateGroupModal
 
   if (!isOpen) return null;
 
-  const nonMembers = CANDIDATE_MEMBERS.filter((m) => !memberIds.includes(m.id));
+  const currentAdmin = assignedAdmin || users[0]?.id || '';
+
+  const nonMembers = users.filter((m) => !memberIds.includes(m.id) && m.id !== currentAdmin);
 
   const currentMembers = memberIds
-    .map((id) => CANDIDATE_MEMBERS.find((m) => m.id === id))
+    .map((id) => users.find((m) => m.id === id))
     .filter((m): m is CandidateMember => Boolean(m));
 
   const handleAddMember = (candidateId: string) => {
-    const candidate = CANDIDATE_MEMBERS.find((m) => m.id === candidateId);
+    const candidate = users.find((m) => m.id === candidateId);
     setMemberIds((prev) => [...prev, candidateId]);
     setIsAddUserPickerOpen(false);
 
@@ -56,33 +62,54 @@ export function CreateGroupModal({ isOpen, onClose, onCreate }: CreateGroupModal
     setMemberToRemove(null);
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!groupName.trim()) return;
-
-    onCreate({
-      groupName: groupName.trim(),
-      assignedAdmin,
-      members: memberIds,
-      membersCount: memberIds.length,
-      status: 'ACTIVE',
-      createdDate: new Date().toISOString().split('T')[0],
-      isDisabled: false,
-      isDeactivated: false,
-    });
-
+  const resetForm = () => {
     setGroupName('');
-    setAssignedAdmin(ADMIN_OPTIONS[0]);
+    setAssignedAdmin('');
     setMemberIds([]);
     setSelectedMemberRowId(null);
     setIsAddUserPickerOpen(false);
+    setError(null);
     setToastInfo({ isOpen: false, title: '', message: '' });
-    onClose();
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!groupName.trim() || !currentAdmin) {
+      setError('Group name and admin are required');
+      return;
+    }
+
+    try {
+      setIsSubmitting(true);
+      setError(null);
+
+      // Create the real group on the Gun.js dchat network with the chosen admin and members.
+      const groupId = await gunService.createGroup(groupName.trim(), currentAdmin, memberIds);
+
+      onCreate({
+        id: groupId,
+        groupName: groupName.trim(),
+        assignedAdmin: currentAdmin,
+        members: memberIds,
+        membersCount: memberIds.length,
+        status: 'ACTIVE',
+        createdDate: new Date().toISOString().split('T')[0],
+        isDisabled: false,
+        isDeactivated: false,
+      });
+
+      resetForm();
+      onClose();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to create group');
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
     <>
-      <div className="group-modal-backdrop" onClick={onClose}>
+      <div className="group-modal-backdrop" onClick={isSubmitting ? undefined : onClose}>
         <div className="group-modal-container" onClick={(e) => e.stopPropagation()}>
           <div className="group-modal-header">
             <h2 className="group-modal-title">CREATE NEW GROUP</h2>
@@ -91,10 +118,28 @@ export function CreateGroupModal({ isOpen, onClose, onCreate }: CreateGroupModal
               className="group-modal-close-btn"
               onClick={onClose}
               aria-label="Close modal"
+              disabled={isSubmitting}
             >
               <X size={18} />
             </button>
           </div>
+
+          {error && (
+            <div
+              style={{
+                fontSize: '12px',
+                color: '#ef4444',
+                backgroundColor: 'rgba(239, 68, 68, 0.1)',
+                border: '1px solid rgba(239, 68, 68, 0.25)',
+                borderRadius: '8px',
+                padding: '8px 12px',
+                textAlign: 'center',
+              }}
+              role="alert"
+            >
+              {error}
+            </div>
+          )}
 
           <form onSubmit={handleSubmit} className="group-modal-form">
             <div className="form-group">
@@ -107,6 +152,7 @@ export function CreateGroupModal({ isOpen, onClose, onCreate }: CreateGroupModal
                 onChange={(e) => setGroupName(e.target.value)}
                 required
                 autoFocus
+                disabled={isSubmitting}
               />
             </div>
 
@@ -114,14 +160,19 @@ export function CreateGroupModal({ isOpen, onClose, onCreate }: CreateGroupModal
               <label className="form-label">ASSIGN GROUP ADMIN</label>
               <select
                 className="form-select"
-                value={assignedAdmin}
+                value={currentAdmin}
                 onChange={(e) => setAssignedAdmin(e.target.value)}
+                disabled={isSubmitting || users.length === 0}
               >
-                {ADMIN_OPTIONS.map((admin) => (
-                  <option key={admin} value={admin}>
-                    {admin}
-                  </option>
-                ))}
+                {users.length === 0 ? (
+                  <option value="">No users available</option>
+                ) : (
+                  users.map((u) => (
+                    <option key={u.id} value={u.id}>
+                      {u.name} ({u.id})
+                    </option>
+                  ))
+                )}
               </select>
             </div>
 
@@ -132,6 +183,7 @@ export function CreateGroupModal({ isOpen, onClose, onCreate }: CreateGroupModal
                   type="button"
                   className="btn-add-user-trigger"
                   onClick={() => setIsAddUserPickerOpen((prev) => !prev)}
+                  disabled={isSubmitting}
                 >
                   <Plus size={14} />
                   <span>Add User</span>
@@ -213,14 +265,16 @@ export function CreateGroupModal({ isOpen, onClose, onCreate }: CreateGroupModal
                 type="button"
                 className="btn-cancel"
                 onClick={onClose}
+                disabled={isSubmitting}
               >
                 Cancel
               </button>
               <button
                 type="submit"
                 className="btn-primary"
+                disabled={isSubmitting}
               >
-                Create Group
+                {isSubmitting ? 'Creating...' : 'Create Group'}
               </button>
             </div>
           </form>
