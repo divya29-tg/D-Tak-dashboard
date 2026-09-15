@@ -25,6 +25,7 @@ export function EditGroupModal({ isOpen, group, onClose, onSave, users }: EditGr
   const [memberToRemove, setMemberToRemove] = useState<CandidateMember | null>(null);
   const [isAddUserPickerOpen, setIsAddUserPickerOpen] = useState(false);
   const [memberActionError, setMemberActionError] = useState<string | null>(null);
+  const [isSaving, setIsSaving] = useState(false);
   const [toastInfo, setToastInfo] = useState<{ isOpen: boolean; title: string; message: string }>({
     isOpen: false,
     title: '',
@@ -115,18 +116,34 @@ export function EditGroupModal({ isOpen, group, onClose, onSave, users }: EditGr
     }
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!groupName.trim()) return;
+    const trimmedName = groupName.trim();
+    if (!trimmedName) return;
 
-    onSave({
-      ...group,
-      groupName: groupName.trim(),
-      assignedAdmin,
-      members: memberIds,
-      membersCount: memberIds.length,
-    });
-    onClose();
+    setMemberActionError(null);
+    setIsSaving(true);
+    try {
+      // Persist to Gun -- this used to only update local React state, so a
+      // renamed group (or reassigned admin) reverted to its old value on
+      // the next refresh/fetch.
+      await gunService.updateGroupDetails(group.id, {
+        name: trimmedName,
+        creator: assignedAdmin,
+      });
+      onSave({
+        ...group,
+        groupName: trimmedName,
+        assignedAdmin,
+        members: memberIds,
+        membersCount: memberIds.length,
+      });
+      onClose();
+    } catch (err) {
+      setMemberActionError(err instanceof Error ? err.message : 'Failed to save group');
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   return (
@@ -293,8 +310,9 @@ export function EditGroupModal({ isOpen, group, onClose, onSave, users }: EditGr
               <button
                 type="submit"
                 className="btn-primary"
+                disabled={isSaving}
               >
-                Save Changes
+                {isSaving ? <Loader2 size={14} className="animate-spin" /> : 'Save Changes'}
               </button>
             </div>
           </form>

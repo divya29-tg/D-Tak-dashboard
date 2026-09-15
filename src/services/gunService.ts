@@ -630,6 +630,34 @@ class GunService {
    * /groups/:id/disable and /enable both 404 on the admin API), so Gun is
    * the only persistence layer available regardless.
    */
+  /**
+   * Rename a group / reassign its admin (the `creator` field -- see
+   * createGroup's note on why it's `creator` and not `admin`). Like
+   * setGroupDisabled, there's no REST endpoint for this, so Gun is the only
+   * persistence layer; the Edit Group modal used to only update local React
+   * state here, which is why a renamed group reverted to its old name on
+   * the next refresh/fetch.
+   */
+  async updateGroupDetails(groupId: string, updates: { name?: string; creator?: string }): Promise<void> {
+    const patch: Record<string, unknown> = {};
+    if (updates.name !== undefined) patch.name = updates.name;
+    if (updates.creator !== undefined) patch.creator = updates.creator;
+    if (Object.keys(patch).length === 0) return;
+
+    return new Promise((resolve, reject) => {
+      this.gun
+        .get('groups')
+        .get(groupId)
+        .put(patch as unknown as Partial<unknown>, (ack: any) => {
+          if (ack.err) {
+            reject(new Error('Failed to update group'));
+          } else {
+            resolve();
+          }
+        });
+    });
+  }
+
   async setGroupDisabled(groupId: string, disabled: boolean): Promise<void> {
     const groupNode = this.gun.get('groups').get(groupId);
 
