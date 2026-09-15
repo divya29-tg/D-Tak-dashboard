@@ -102,22 +102,32 @@ const SCHEMAS_TOTAL = 259;
 const ISSUERS_TOTAL = 10;
 const VERIFIERS_TOTAL = 1;
 
+// DTAK design-token colors (see the --ncc-* CSS variables in NCCScreen.css).
+const NCC_GREEN = '#8fbf3f';
+const NCC_PURPLE = '#a78bfa';
+const NCC_MUTED_GREEN = '#6b8f70';
+const NCC_AMBER = '#f2a93b';
+const NCC_BLUE = '#3b82f6';
+const NCC_RED = '#e5484d';
+const NCC_TEXT_SECONDARY = '#9ca3af';
+const NCC_TEXT_TERTIARY = '#6b7280';
+
 const STAT_CARDS = [
-  { icon: Share2, value: TRANSACTIONS_TOTAL, label: 'Transactions', trend: '18%', color: '#4f46e5', bg: '#eef2ff', spark: [12, 15, 14, 18, 22, 20, 25, 28, 26, 31] },
-  { icon: Building2, value: SERVICES_CREATED_TOTAL, label: 'Services', trend: '8%', color: '#8b5cf6', bg: '#f5f3ff', spark: [20, 22, 21, 24, 23, 26, 28, 27, 30, 32] },
-  { icon: ClipboardList, value: CLAIM_DEFS_TOTAL, label: 'Claim Definitions', trend: '6%', color: '#f59e0b', bg: '#fffbeb', spark: [30, 29, 31, 33, 32, 35, 34, 37, 39, 38] },
-  { icon: FileText, value: SCHEMAS_TOTAL, label: 'Schemas', trend: '4%', color: '#10b981', bg: '#ecfdf5', spark: [40, 41, 40, 42, 44, 43, 45, 46, 45, 47] },
-  { icon: ShieldCheck, value: ISSUERS_TOTAL, label: 'Issuers', trend: '7%', color: '#06b6d4', bg: '#ecfeff', spark: [4, 5, 5, 6, 6, 7, 8, 8, 9, 10] },
-  { icon: UserCheck, value: VERIFIERS_TOTAL, label: 'Verifier', trend: null, color: '#ec4899', bg: '#fdf2f8', spark: [1, 1, 1, 1, 1, 1, 1, 1, 1, 1] },
+  { icon: Share2, value: TRANSACTIONS_TOTAL, label: 'Transactions', trend: '18%', color: NCC_GREEN, bg: 'rgba(143, 191, 63, 0.14)', spark: [12, 15, 14, 18, 22, 20, 25, 28, 26, 31] },
+  { icon: Building2, value: SERVICES_CREATED_TOTAL, label: 'Services', trend: '8%', color: NCC_PURPLE, bg: 'rgba(167, 139, 250, 0.14)', spark: [20, 22, 21, 24, 23, 26, 28, 27, 30, 32] },
+  { icon: ClipboardList, value: CLAIM_DEFS_TOTAL, label: 'Claim Definitions', trend: '6%', color: NCC_AMBER, bg: 'rgba(242, 169, 59, 0.14)', spark: [30, 29, 31, 33, 32, 35, 34, 37, 39, 38] },
+  { icon: FileText, value: SCHEMAS_TOTAL, label: 'Schemas', trend: '4%', color: NCC_MUTED_GREEN, bg: 'rgba(107, 143, 112, 0.16)', spark: [40, 41, 40, 42, 44, 43, 45, 46, 45, 47] },
+  { icon: ShieldCheck, value: ISSUERS_TOTAL, label: 'Issuers', trend: '7%', color: NCC_BLUE, bg: 'rgba(59, 130, 246, 0.14)', spark: [4, 5, 5, 6, 6, 7, 8, 8, 9, 10] },
+  { icon: UserCheck, value: VERIFIERS_TOTAL, label: 'Verifier', trend: null, color: NCC_TEXT_SECONDARY, bg: 'rgba(156, 163, 175, 0.12)', spark: [1, 1, 1, 1, 1, 1, 1, 1, 1, 1] },
 ];
 
 const DISTRIBUTION_SEGMENTS = [
-  { label: 'NYM', value: 42, color: '#4f46e5' },
-  { label: 'Schema', value: 28, color: '#8b5cf6' },
-  { label: 'Credential', value: 21, color: '#10b981' },
-  { label: 'Claim Definition', value: 6, color: '#f59e0b' },
-  { label: 'Revocation', value: 2, color: '#ef4444' },
-  { label: 'Other', value: 1, color: '#9ca3af' },
+  { label: 'NYM', value: 42, color: NCC_GREEN },
+  { label: 'Schema', value: 28, color: NCC_PURPLE },
+  { label: 'Credential', value: 21, color: NCC_MUTED_GREEN },
+  { label: 'Claim Definition', value: 6, color: NCC_AMBER },
+  { label: 'Revocation', value: 2, color: NCC_RED },
+  { label: 'Other', value: 1, color: NCC_TEXT_TERTIARY },
 ];
 
 interface NodeInfo {
@@ -155,11 +165,11 @@ interface LedgerRow {
 }
 
 const RECENT_LEDGER: LedgerRow[] = [
-  { seq: 2944, type: 'NYM', color: '#4f46e5', txnId: 'e935fela260497524e1195c9b7f18716aecbb4ea9b...', time: '25 mins ago' },
-  { seq: 2943, type: 'Schema', color: '#8b5cf6', txnId: '3f21a8e99d4c7b2e6f0a9d114b8c1d2f7a8e92...', time: '1 hour ago' },
-  { seq: 2942, type: 'Credential', color: '#10b981', txnId: '82bd4f6e1a7c93d2e5f8a1b4dc3d7e9f31c21...', time: '2 hours ago' },
-  { seq: 2941, type: 'Claim Def', color: '#f59e0b', txnId: '17aa9b3d4e6c21f5a8b7d9e0f4c3b8a1d4c12...', time: '3 hours ago' },
-  { seq: 2940, type: 'Revocation', color: '#ef4444', txnId: '9c4d7e2a1f8b6d3c5e2a9f7b3d1c8e4a2b7f31...', time: '5 hours ago' },
+  { seq: 2944, type: 'NYM', color: NCC_GREEN, txnId: 'e935fela260497524e1195c9b7f18716aecbb4ea9b...', time: '25 mins ago' },
+  { seq: 2943, type: 'Schema', color: NCC_PURPLE, txnId: '3f21a8e99d4c7b2e6f0a9d114b8c1d2f7a8e92...', time: '1 hour ago' },
+  { seq: 2942, type: 'Credential', color: NCC_MUTED_GREEN, txnId: '82bd4f6e1a7c93d2e5f8a1b4dc3d7e9f31c21...', time: '2 hours ago' },
+  { seq: 2941, type: 'Claim Def', color: NCC_AMBER, txnId: '17aa9b3d4e6c21f5a8b7d9e0f4c3b8a1d4c12...', time: '3 hours ago' },
+  { seq: 2940, type: 'Revocation', color: NCC_RED, txnId: '9c4d7e2a1f8b6d3c5e2a9f7b3d1c8e4a2b7f31...', time: '5 hours ago' },
 ];
 
 const CHART_W = 720;
@@ -290,7 +300,7 @@ function LineChart({
           const y = CHART_PAD_T + plotH - (gv / maxVal) * plotH;
           return (
             <g key={gv}>
-              <line x1={CHART_PAD_L} x2={CHART_W - CHART_PAD_R} y1={y} y2={y} stroke="#eef0f2" strokeWidth={1} strokeDasharray="3 4" />
+              <line x1={CHART_PAD_L} x2={CHART_W - CHART_PAD_R} y1={y} y2={y} stroke="#2a2d30" strokeWidth={1} strokeDasharray="3 4" />
               <text x={CHART_PAD_L - 10} y={y + 3} textAnchor="end" fontSize="10" fill="#9ca3af">
                 {gv}
               </text>
@@ -308,7 +318,7 @@ function LineChart({
             cy={p.y}
             r={i === 0 || i === points.length - 1 ? 4 : 3}
             fill={color}
-            stroke="#ffffff"
+            stroke="#17191b"
             strokeWidth={1.5}
             style={{ cursor: 'pointer' }}
             onMouseMove={(e) => showTooltip(p, e)}
@@ -367,8 +377,8 @@ function GroupedBarChart({
       y: evt.clientY - rect.top,
       title: label,
       rows: [
-        { label: 'Created Service', value: String(c), color: '#4f46e5' },
-        { label: 'Published Service', value: String(p), color: '#8b5cf6' },
+        { label: 'Created Service', value: String(c), color: NCC_GREEN },
+        { label: 'Published Service', value: String(p), color: NCC_PURPLE },
       ],
     });
   };
@@ -386,7 +396,7 @@ function GroupedBarChart({
           const y = CHART_PAD_T + plotH - (gv / axisMax) * plotH;
           return (
             <g key={gv}>
-              <line x1={CHART_PAD_L} x2={CHART_W - CHART_PAD_R} y1={y} y2={y} stroke="#eef0f2" strokeWidth={1} strokeDasharray="3 4" />
+              <line x1={CHART_PAD_L} x2={CHART_W - CHART_PAD_R} y1={y} y2={y} stroke="#2a2d30" strokeWidth={1} strokeDasharray="3 4" />
               <text x={CHART_PAD_L - 10} y={y + 3} textAnchor="end" fontSize="10" fill="#9ca3af">
                 {gv}
               </text>
@@ -401,8 +411,8 @@ function GroupedBarChart({
           const baseY = CHART_PAD_T + plotH;
           return (
             <g key={label} onMouseMove={(e) => showTooltip(label, created[i], published[i], e)} style={{ cursor: 'pointer' }}>
-              <rect x={groupX - barW - 2} y={baseY - cH} width={barW} height={cH} rx={3} fill="#4f46e5" />
-              <rect x={groupX + 2} y={baseY - pH} width={barW} height={pH} rx={3} fill="#8b5cf6" />
+              <rect x={groupX - barW - 2} y={baseY - cH} width={barW} height={cH} rx={3} fill={NCC_GREEN} />
+              <rect x={groupX + 2} y={baseY - pH} width={barW} height={pH} rx={3} fill={NCC_PURPLE} />
               <text x={groupX} y={CHART_H - 4} textAnchor="middle" fontSize="10" fill="#9ca3af">
                 {label}
               </text>
@@ -459,7 +469,7 @@ function SingleBarChart({ labels, values, color }: { labels: string[]; values: n
           const y = CHART_PAD_T + plotH - (gv / axisMax) * plotH;
           return (
             <g key={gv}>
-              <line x1={CHART_PAD_L} x2={CHART_W - CHART_PAD_R} y1={y} y2={y} stroke="#eef0f2" strokeWidth={1} strokeDasharray="3 4" />
+              <line x1={CHART_PAD_L} x2={CHART_W - CHART_PAD_R} y1={y} y2={y} stroke="#2a2d30" strokeWidth={1} strokeDasharray="3 4" />
               <text x={CHART_PAD_L - 10} y={y + 3} textAnchor="end" fontSize="10" fill="#9ca3af">
                 {gv}
               </text>
@@ -544,7 +554,7 @@ function DonutChart({
     <div className="ncc-donut">
       <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} role="img" aria-label="Transaction distribution by type">
         <g transform={`rotate(-90 ${size / 2} ${size / 2})`}>
-          <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke="#f1f2f4" strokeWidth={stroke} />
+          <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke="#2a2d30" strokeWidth={stroke} />
           {arcs.map((a) => (
             <circle
               key={a.label}
@@ -559,7 +569,7 @@ function DonutChart({
             />
           ))}
         </g>
-        <text x={size / 2} y={size / 2 - 6} textAnchor="middle" fontSize="22" fontWeight={700} fill="#111827">
+        <text x={size / 2} y={size / 2 - 6} textAnchor="middle" fontSize="22" fontWeight={700} fill="#ffffff">
           {centerValue}
         </text>
         <text x={size / 2} y={size / 2 + 14} textAnchor="middle" fontSize="11" fill="#9ca3af">
@@ -770,7 +780,7 @@ export function NCCScreen() {
 
               <div className="ncc-banner__activity">
                 <span className="ncc-banner__activity-label">Live Network Activity</span>
-                <Sparkline values={[18, 22, 19, 26, 24, 30, 27, 33, 29, 35, 31, 38]} color="#22c55e" width={140} height={36} />
+                <Sparkline values={[18, 22, 19, 26, 24, 30, 27, 33, 29, 35, 31, 38]} color={NCC_GREEN} width={140} height={36} />
                 <span className="ncc-banner__activity-status">
                   <Radio size={11} />
                   Normal
@@ -835,7 +845,7 @@ export function NCCScreen() {
                 <span className="ncc-panel__headline-label">transactions in this period</span>
               </div>
 
-              <LineChart labels={txnData.labels} values={txnData.values} color="#4f46e5" valueLabel="Transactions" />
+              <LineChart labels={txnData.labels} values={txnData.values} color={NCC_GREEN} valueLabel="Transactions" />
             </div>
 
             <div className="ncc-panel">
@@ -860,7 +870,7 @@ export function NCCScreen() {
             <div className="ncc-panel">
               <div className="ncc-panel__header">
                 <div className="ncc-panel__header-left">
-                  <div className="ncc-panel__icon" style={{ backgroundColor: '#f5f3ff', color: '#8b5cf6' }}>
+                  <div className="ncc-panel__icon" style={{ backgroundColor: 'rgba(167, 139, 250, 0.14)', color: NCC_PURPLE }}>
                     <UsersRound size={18} />
                   </div>
                   <div>
@@ -889,13 +899,13 @@ export function NCCScreen() {
                 <span className="ncc-panel__headline-label">total holders</span>
               </div>
 
-              <LineChart labels={holderData.labels} values={holderData.values} color="#8b5cf6" valueLabel="Holders" />
+              <LineChart labels={holderData.labels} values={holderData.values} color={NCC_PURPLE} valueLabel="Holders" />
             </div>
 
             <div className="ncc-panel">
               <div className="ncc-panel__header">
                 <div className="ncc-panel__header-left">
-                  <div className="ncc-panel__icon" style={{ backgroundColor: '#ecfdf5', color: '#10b981' }}>
+                  <div className="ncc-panel__icon" style={{ backgroundColor: 'rgba(107, 143, 112, 0.16)', color: NCC_MUTED_GREEN }}>
                     <ClipboardList size={18} />
                   </div>
                   <div>
@@ -924,7 +934,7 @@ export function NCCScreen() {
                 <span className="ncc-panel__headline-label">credentials issued</span>
               </div>
 
-              <SingleBarChart labels={credentialData.labels} values={credentialData.values} color="#10b981" />
+              <SingleBarChart labels={credentialData.labels} values={credentialData.values} color={NCC_MUTED_GREEN} />
             </div>
 
             <div className="ncc-panel">
@@ -942,13 +952,13 @@ export function NCCScreen() {
 
               <div className="ncc-lifecycle-numbers">
                 <div>
-                  <div className="ncc-lifecycle-numbers__value" style={{ color: '#4f46e5' }}>
+                  <div className="ncc-lifecycle-numbers__value" style={{ color: NCC_GREEN }}>
                     {servicePeriodCreated}
                   </div>
                   <div className="ncc-lifecycle-numbers__label">Created</div>
                 </div>
                 <div style={{ textAlign: 'right' }}>
-                  <div className="ncc-lifecycle-numbers__value" style={{ color: '#8b5cf6' }}>
+                  <div className="ncc-lifecycle-numbers__value" style={{ color: NCC_PURPLE }}>
                     {servicePeriodPublished}
                   </div>
                   <div className="ncc-lifecycle-numbers__label">Published</div>
@@ -958,11 +968,11 @@ export function NCCScreen() {
               <div className="ncc-lifecycle-bar">
                 <div
                   className="ncc-lifecycle-bar__segment"
-                  style={{ width: `${(servicePeriodCreated / (servicePeriodCreated + servicePeriodPublished || 1)) * 100}%`, backgroundColor: '#4f46e5' }}
+                  style={{ width: `${(servicePeriodCreated / (servicePeriodCreated + servicePeriodPublished || 1)) * 100}%`, backgroundColor: NCC_GREEN }}
                 />
                 <div
                   className="ncc-lifecycle-bar__segment"
-                  style={{ width: `${(servicePeriodPublished / (servicePeriodCreated + servicePeriodPublished || 1)) * 100}%`, backgroundColor: '#8b5cf6' }}
+                  style={{ width: `${(servicePeriodPublished / (servicePeriodCreated + servicePeriodPublished || 1)) * 100}%`, backgroundColor: NCC_PURPLE }}
                 />
               </div>
 
@@ -1063,7 +1073,7 @@ export function NCCScreen() {
 
                 <div className="ncc-insights">
                   <div className="ncc-insight-tile">
-                    <span className="ncc-insight-tile__icon" style={{ backgroundColor: '#eef2ff', color: '#4f46e5' }}>
+                    <span className="ncc-insight-tile__icon" style={{ backgroundColor: 'rgba(143, 191, 63, 0.14)', color: NCC_GREEN }}>
                       <TrendingUp size={16} />
                     </span>
                     <div className="ncc-insight-tile__value">{peakTxn.value} transactions</div>
@@ -1071,7 +1081,7 @@ export function NCCScreen() {
                     <div className="ncc-insight-tile__meta">{peakTxn.label}</div>
                   </div>
                   <div className="ncc-insight-tile">
-                    <span className="ncc-insight-tile__icon" style={{ backgroundColor: '#ecfdf5', color: '#10b981' }}>
+                    <span className="ncc-insight-tile__icon" style={{ backgroundColor: 'rgba(107, 143, 112, 0.16)', color: NCC_MUTED_GREEN }}>
                       <UsersRound size={16} />
                     </span>
                     <div className="ncc-insight-tile__value">{peakCredential.value} credentials</div>
@@ -1079,7 +1089,7 @@ export function NCCScreen() {
                     <div className="ncc-insight-tile__meta">{peakCredential.label}</div>
                   </div>
                   <div className="ncc-insight-tile">
-                    <span className="ncc-insight-tile__icon" style={{ backgroundColor: '#fffbeb', color: '#f59e0b' }}>
+                    <span className="ncc-insight-tile__icon" style={{ backgroundColor: 'rgba(242, 169, 59, 0.14)', color: NCC_AMBER }}>
                       <Clock size={16} />
                     </span>
                     <div className="ncc-insight-tile__value">{NODES[0].uptime.split(',')[0]}</div>
@@ -1156,7 +1166,7 @@ export function NCCScreen() {
                 <Copy size={15} />
               </button>
             </div>
-            {copied && <div style={{ fontSize: 12, color: '#0d9488', marginTop: -8, marginBottom: 8 }}>Copied!</div>}
+            {copied && <div style={{ fontSize: 12, color: NCC_GREEN, marginTop: -8, marginBottom: 8 }}>Copied!</div>}
 
             <div className="ncc-txn-grid">
               <div className="ncc-txn-field">
