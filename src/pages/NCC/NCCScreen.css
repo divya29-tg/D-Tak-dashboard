@@ -224,74 +224,202 @@
   opacity: 0.8;
 }
 
-/* ===== Main light dashboard (replicates the TrustGrid Ledger screenshot) ===== */
+/* ===== Main light dashboard (network overview, redesigned) ===== */
 .ncc-main {
   flex: 1;
   height: 100vh;
   max-height: 100vh;
   overflow-y: auto;
-  background-color: #eef1f5;
+  background-color: #f3f4f7;
   position: relative;
 }
 
-.ncc-topbar {
-  height: 84px;
-  min-height: 84px;
-  background-color: #ffffff;
-  border-bottom: 1px solid #e5e7eb;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 0 32px;
-  box-sizing: border-box;
-  position: sticky;
-  top: 0;
-  z-index: 10;
-}
-
-.ncc-topbar__left {
-  display: flex;
-  align-items: center;
-  gap: 20px;
-}
-
-.ncc-topbar__title {
-  font-size: 28px;
-  font-weight: 700;
-  color: #111827;
-  margin: 0;
-}
-
-.ncc-body {
-  padding: 24px 32px 60px;
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) 380px;
-  gap: 20px;
-  align-items: start;
-}
-
-.ncc-left-col {
+.ncc-scroll {
+  padding: 28px 32px 60px;
   display: flex;
   flex-direction: column;
   gap: 20px;
-  min-width: 0;
+  max-width: 1440px;
+  margin: 0 auto;
 }
 
-/* Stat cards */
+/* Status banner */
+.ncc-banner {
+  position: relative;
+  background: linear-gradient(135deg, #ffffff 0%, #f8f9ff 100%);
+  border: 1px solid #e5e7eb;
+  border-radius: 20px;
+  padding: 28px 32px;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 32px;
+  overflow: hidden;
+  flex-wrap: wrap;
+}
+
+.ncc-banner__glow {
+  position: absolute;
+  top: -80px;
+  right: -80px;
+  width: 260px;
+  height: 260px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(79, 70, 229, 0.1) 0%, rgba(79, 70, 229, 0) 70%);
+  pointer-events: none;
+}
+
+.ncc-banner__left {
+  position: relative;
+  min-width: 0;
+  flex: 1;
+}
+
+.ncc-banner__title {
+  font-size: 26px;
+  font-weight: 700;
+  color: #111827;
+  margin: 0 0 8px;
+}
+
+.ncc-banner__status {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 15px;
+  font-weight: 700;
+  color: #16a34a;
+  margin-bottom: 8px;
+}
+
+.ncc-banner__status-dot {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background-color: #22c55e;
+  box-shadow: 0 0 0 4px rgba(34, 197, 94, 0.16);
+}
+
+.ncc-banner__desc {
+  font-size: 13px;
+  color: #6b7280;
+  margin: 0 0 22px;
+}
+
+.ncc-banner__metrics {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 36px;
+}
+
+.ncc-banner__metric-value {
+  font-size: 18px;
+  font-weight: 700;
+  color: #111827;
+  white-space: nowrap;
+}
+
+.ncc-banner__metric-label {
+  font-size: 12px;
+  color: #9ca3af;
+  margin-top: 2px;
+  white-space: nowrap;
+}
+
+.ncc-banner__right {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  flex-shrink: 0;
+}
+
+.ncc-banner__env {
+  background-color: #ffffff;
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+  padding: 10px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 190px;
+}
+
+.ncc-banner__env-label {
+  font-size: 11px;
+  color: #9ca3af;
+  font-weight: 600;
+}
+
+.ncc-banner__env-select {
+  border: none;
+  background: transparent;
+  font-size: 14px;
+  font-weight: 600;
+  color: #111827;
+  padding: 0;
+  cursor: pointer;
+}
+
+.ncc-banner__activity {
+  background-color: #ffffff;
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+  padding: 10px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 190px;
+}
+
+.ncc-banner__activity-label {
+  font-size: 11px;
+  color: #9ca3af;
+  font-weight: 600;
+}
+
+.ncc-banner__activity-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 12px;
+  font-weight: 600;
+  color: #16a34a;
+}
+
+.ncc-banner__globe {
+  position: absolute;
+  top: -6px;
+  right: -6px;
+  color: #e0e7ff;
+  pointer-events: none;
+  z-index: -1;
+}
+
+.ncc-sparkline {
+  display: block;
+}
+
+/* Headline stat cards */
 .ncc-stats-grid {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
   gap: 16px;
 }
 
+.ncc-stats-grid--6 {
+  grid-template-columns: repeat(6, 1fr);
+}
+
 .ncc-stat-card {
   background-color: #ffffff;
+  border: 1px solid #eef0f2;
   border-radius: 16px;
-  padding: 20px 22px;
+  padding: 18px 18px 16px;
   box-shadow: 0 1px 2px rgba(16, 24, 40, 0.04);
   display: flex;
   flex-direction: column;
-  gap: 14px;
+  gap: 12px;
 }
 
 .ncc-stat-card__top {
@@ -301,40 +429,65 @@
 }
 
 .ncc-stat-card__icon {
-  width: 40px;
-  height: 40px;
+  width: 36px;
+  height: 36px;
   border-radius: 10px;
-  background-color: #eef2ff;
-  color: #4f46e5;
   display: flex;
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
 }
 
-.ncc-stat-card__view {
+.ncc-stat-card__trend {
   display: inline-flex;
   align-items: center;
-  gap: 4px;
-  font-size: 12px;
-  font-weight: 600;
-  color: #4f46e5;
-  background: transparent;
-  border: none;
-  cursor: pointer;
-  padding: 0;
+  gap: 3px;
+  font-size: 11px;
+  font-weight: 700;
+  color: #16a34a;
+}
+
+.ncc-stat-card__trend--flat {
+  color: #9ca3af;
 }
 
 .ncc-stat-card__number {
-  font-size: 32px;
+  font-size: 26px;
   font-weight: 700;
   color: #111827;
   line-height: 1;
 }
 
 .ncc-stat-card__label {
-  font-size: 14px;
+  font-size: 12px;
   color: #6b7280;
+  margin-top: 4px;
+}
+
+/* Two / three column grids */
+.ncc-grid-2 {
+  display: grid;
+  grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr);
+  gap: 20px;
+  align-items: start;
+}
+
+.ncc-grid-2--bottom {
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+}
+
+.ncc-grid-3 {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 20px;
+  align-items: start;
+}
+
+.ncc-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  min-width: 0;
 }
 
 /* Analytics panels */
@@ -343,6 +496,7 @@
   border-radius: 16px;
   padding: 22px 24px 26px;
   box-shadow: 0 1px 2px rgba(16, 24, 40, 0.04);
+  min-width: 0;
 }
 
 .ncc-panel__header {
@@ -385,12 +539,54 @@
   margin: 2px 0 0;
 }
 
+.ncc-panel__headline {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  margin-bottom: 12px;
+  flex-wrap: wrap;
+}
+
+.ncc-panel__headline--compact {
+  margin-bottom: 8px;
+}
+
+.ncc-panel__headline-value {
+  font-size: 30px;
+  font-weight: 700;
+  color: #111827;
+  line-height: 1;
+}
+
+.ncc-panel__headline-trend {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  font-size: 13px;
+  font-weight: 700;
+  color: #16a34a;
+}
+
+.ncc-panel__headline-trend--down {
+  color: #ef4444;
+}
+
+.ncc-panel__headline-trend--down svg {
+  transform: rotate(180deg);
+}
+
+.ncc-panel__headline-label {
+  font-size: 13px;
+  color: #9ca3af;
+}
+
 .ncc-toggle-group {
   display: flex;
   background-color: #f3f4f6;
   border-radius: 999px;
   padding: 3px;
   gap: 2px;
+  width: fit-content;
 }
 
 .ncc-toggle-btn {
@@ -410,62 +606,10 @@
   color: #ffffff;
 }
 
-.ncc-date-row {
-  display: flex;
-  align-items: center;
-  gap: 28px;
-  margin-bottom: 18px;
-  flex-wrap: wrap;
-}
-
-.ncc-date-field {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-}
-
-.ncc-date-field__label {
-  font-size: 14px;
-  color: #374151;
-  font-weight: 500;
-}
-
-.ncc-date-input {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  background-color: #ffffff;
-  border: 1px solid #e5e7eb;
-  border-radius: 10px;
-  padding: 9px 14px;
-  font-size: 13px;
-  color: #374151;
-}
-
-.ncc-legend-row {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  justify-content: flex-end;
-  margin-bottom: 8px;
-  font-size: 12px;
-  color: #374151;
-}
-
-.ncc-legend-row + .ncc-legend-row {
-  margin-top: -4px;
-}
-
-.ncc-legend-dot {
-  width: 10px;
-  height: 10px;
-  border-radius: 50%;
-  flex-shrink: 0;
-}
-
 .ncc-chart-wrap {
   width: 100%;
   overflow-x: auto;
+  margin-top: 12px;
 }
 
 .ncc-svg-chart {
@@ -495,6 +639,316 @@
 
 .ncc-chart-tooltip__value {
   font-weight: 700;
+}
+
+/* Donut chart */
+.ncc-donut {
+  display: flex;
+  align-items: center;
+  gap: 28px;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
+.ncc-donut__legend {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  min-width: 160px;
+}
+
+.ncc-donut__legend-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  color: #374151;
+}
+
+.ncc-donut__legend-label {
+  flex: 1;
+}
+
+.ncc-donut__legend-value {
+  font-weight: 700;
+  color: #111827;
+}
+
+.ncc-legend-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+/* Service Lifecycle numbers + proportion bar */
+.ncc-lifecycle-numbers {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  margin-bottom: 10px;
+}
+
+.ncc-lifecycle-numbers__value {
+  font-size: 26px;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.ncc-lifecycle-numbers__label {
+  font-size: 12px;
+  color: #9ca3af;
+  margin-top: 4px;
+}
+
+.ncc-lifecycle-bar {
+  display: flex;
+  width: 100%;
+  height: 8px;
+  border-radius: 999px;
+  overflow: hidden;
+  background-color: #f3f4f6;
+  margin-bottom: 16px;
+}
+
+.ncc-lifecycle-bar__segment {
+  height: 100%;
+}
+
+/* Bottom row: let Network Topology stretch to match the Insights/Ledger stack's height */
+.ncc-grid-2--stretch {
+  align-items: stretch;
+}
+
+.ncc-panel--fill {
+  display: flex;
+  flex-direction: column;
+}
+
+.ncc-topology__ratio-badge {
+  font-size: 12px;
+  font-weight: 700;
+  color: #4f46e5;
+  background-color: #eef2ff;
+  border-radius: 999px;
+  padding: 5px 12px;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+/* Network Topology -- fills whatever vertical space the panel has */
+.ncc-topology {
+  position: relative;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  min-height: 380px;
+}
+
+.ncc-topology__grid {
+  position: relative;
+  z-index: 1;
+  flex: 1;
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  grid-template-rows: repeat(3, 1fr);
+  gap: 16px;
+}
+
+.ncc-topology__node {
+  background-color: #f9fafb;
+  border: 1px solid #eef0f2;
+  border-radius: 12px;
+  padding: 14px 16px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 4px;
+}
+
+.ncc-topology__node-name {
+  font-size: 13px;
+  font-weight: 700;
+  color: #111827;
+}
+
+.ncc-topology__node-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 11px;
+  font-weight: 600;
+  color: #16a34a;
+}
+
+.ncc-topology__node-status--offline {
+  color: #9ca3af;
+}
+
+.ncc-topology__dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background-color: #22c55e;
+}
+
+.ncc-topology__dot--offline {
+  background-color: #d1d5db;
+}
+
+.ncc-topology__node-addr {
+  font-size: 11px;
+  color: #9ca3af;
+  font-family: 'SFMono-Regular', Menlo, monospace;
+}
+
+.ncc-topology__lines {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 0;
+}
+
+.ncc-topology__hub {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  width: 96px;
+  height: 96px;
+  border-radius: 50%;
+  background-color: #ffffff;
+  border: 2px solid #4f46e5;
+  box-shadow: 0 0 0 8px rgba(79, 70, 229, 0.07);
+  justify-self: center;
+  align-self: center;
+}
+
+.ncc-topology__hub-logo {
+  width: 28px;
+  height: 28px;
+  object-fit: contain;
+}
+
+.ncc-topology__hub span {
+  font-size: 10px;
+  font-weight: 700;
+  color: #4f46e5;
+  letter-spacing: 0.04em;
+}
+
+.ncc-topology__footnote {
+  text-align: center;
+  font-size: 12px;
+  color: #9ca3af;
+}
+
+/* Network Insights */
+.ncc-insights {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 14px;
+}
+
+.ncc-insight-tile {
+  background-color: #f9fafb;
+  border: 1px solid #eef0f2;
+  border-radius: 12px;
+  padding: 14px 14px 12px;
+}
+
+.ncc-insight-tile__icon {
+  width: 30px;
+  height: 30px;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 10px;
+}
+
+.ncc-insight-tile__value {
+  font-size: 15px;
+  font-weight: 700;
+  color: #111827;
+}
+
+.ncc-insight-tile__label {
+  font-size: 11px;
+  color: #6b7280;
+  margin-top: 3px;
+}
+
+.ncc-insight-tile__meta {
+  font-size: 10px;
+  color: #9ca3af;
+  margin-top: 2px;
+}
+
+/* Recent Ledger Activity table */
+.ncc-view-all {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 12px;
+  font-weight: 600;
+  color: #4f46e5;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.ncc-ledger-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.ncc-ledger-table th {
+  text-align: left;
+  font-size: 11px;
+  font-weight: 600;
+  color: #9ca3af;
+  padding: 0 8px 8px;
+  border-bottom: 1px solid #f1f2f4;
+}
+
+.ncc-ledger-table td {
+  padding: 10px 8px;
+  border-bottom: 1px solid #f6f7f8;
+  font-size: 12px;
+  color: #374151;
+  vertical-align: middle;
+}
+
+.ncc-ledger-table tr:last-child td {
+  border-bottom: none;
+}
+
+.ncc-ledger-table__id {
+  font-family: 'SFMono-Regular', Menlo, monospace;
+  font-size: 11px;
+  color: #6b7280;
+  max-width: 220px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ncc-ledger-table__time {
+  color: #9ca3af;
+  white-space: nowrap;
+}
+
+.ncc-ledger-badge {
+  display: inline-block;
+  font-size: 11px;
+  font-weight: 700;
+  padding: 3px 9px;
+  border-radius: 999px;
 }
 
 /* Last Transaction */
@@ -583,103 +1037,40 @@
   font-weight: 600;
 }
 
-/* Network Health (right column) */
-.ncc-right-col {
-  display: flex;
-  flex-direction: column;
-  gap: 14px;
-}
-
-.ncc-right-col__title {
-  font-size: 20px;
-  font-weight: 700;
-  color: #111827;
-  margin: 4px 0 0;
-}
-
-.ncc-right-col__subtitle {
-  font-size: 14px;
-  color: #6b7280;
-  margin: 0 0 4px;
-}
-
-.ncc-node-card {
-  background-color: #ffffff;
-  border-radius: 16px;
-  box-shadow: 0 1px 2px rgba(16, 24, 40, 0.04);
-  overflow: hidden;
-}
-
-.ncc-node-card__header {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 16px 18px;
-  border-bottom: 1px solid #f1f2f4;
-}
-
-.ncc-node-card__globe {
-  width: 30px;
-  height: 30px;
-  border-radius: 50%;
-  background-color: #eef2ff;
-  color: #4f46e5;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  flex-shrink: 0;
-}
-
-.ncc-node-card__name {
-  font-size: 15px;
-  font-weight: 700;
-  color: #111827;
-}
-
-.ncc-node-card__grid {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 14px 12px;
-  padding: 16px 18px;
-}
-
-.ncc-node-card__grid--full {
-  grid-column: 1 / -1;
-}
-
-.ncc-node-field__label {
-  font-size: 12px;
-  color: #9ca3af;
-  margin-bottom: 3px;
-}
-
-.ncc-node-field__value {
-  font-size: 14px;
-  color: #111827;
-  font-weight: 600;
-  word-break: break-word;
-}
-
-.ncc-node-field__value--mono {
-  font-family: 'SFMono-Regular', Menlo, monospace;
-  font-weight: 500;
-  font-size: 13px;
+@media (max-width: 1320px) {
+  .ncc-stats-grid--6 {
+    grid-template-columns: repeat(3, 1fr);
+  }
 }
 
 @media (max-width: 1180px) {
-  .ncc-body {
+  .ncc-grid-2,
+  .ncc-grid-2--bottom,
+  .ncc-grid-3 {
     grid-template-columns: 1fr;
+  }
+  .ncc-banner {
+    flex-direction: column;
+  }
+  .ncc-banner__globe {
+    display: none;
   }
 }
 
 @media (max-width: 720px) {
-  .ncc-stats-grid {
+  .ncc-stats-grid,
+  .ncc-stats-grid--6,
+  .ncc-insights {
     grid-template-columns: repeat(2, 1fr);
   }
   .ncc-txn-grid {
     grid-template-columns: 1fr;
   }
-  .ncc-node-card__grid {
-    grid-template-columns: 1fr;
+  .ncc-topology__grid {
+    grid-template-columns: repeat(2, 1fr);
+    grid-template-rows: repeat(5, minmax(70px, auto));
+  }
+  .ncc-topology__hub {
+    grid-column: span 2;
   }
 }

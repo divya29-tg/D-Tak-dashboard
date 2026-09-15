@@ -17,10 +17,13 @@ import {
   Share2,
   UsersRound,
   Settings2,
-  Globe,
-  Hash,
   Copy,
-  Calendar,
+  TrendingUp,
+  Clock,
+  Radio,
+  ArrowUpRight,
+  Boxes,
+  Globe,
 } from 'lucide-react';
 import { ROUTES } from '@/app/router/routes';
 import dtakLogo from '@/assets/dtak-logo.png';
@@ -63,13 +66,58 @@ const SERVICE_DATASETS: Record<RangeMode, { labels: string[]; created: number[];
   },
 };
 
+const CREDENTIAL_DATASETS: Record<RangeMode, { labels: string[]; values: number[] }> = {
+  daily: {
+    labels: HOLDER_DATASETS.daily.labels,
+    values: [8, 10, 6, 12, 9, 14, 11, 13, 10, 15, 12, 16, 14, 18],
+  },
+  weekly: {
+    labels: HOLDER_DATASETS.weekly.labels,
+    values: [28, 34, 31, 40, 37, 45, 42, 50],
+  },
+  monthly: {
+    labels: HOLDER_DATASETS.monthly.labels,
+    values: [24, 31, 29, 38, 42, 48],
+  },
+};
+
+const TXN_RANGE_OPTIONS = ['24H', '7D', '30D', '3M', '1Y'] as const;
+type TxnRange = (typeof TXN_RANGE_OPTIONS)[number];
+
+const TRANSACTION_DATASETS: Record<TxnRange, { labels: string[]; values: number[] }> = {
+  '24H': { labels: ['00:00', '04:00', '08:00', '12:00', '16:00', '20:00', '23:59'], values: [12, 18, 34, 52, 61, 48, 29] },
+  '7D': { labels: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'], values: [38, 45, 52, 66, 58, 41, 36] },
+  '30D': { labels: ['Wk 1', 'Wk 2', 'Wk 3', 'Wk 4'], values: [186, 214, 248, 266] },
+  '3M': { labels: ['Jul', 'Aug', 'Sept'], values: [820, 910, 1040] },
+  '1Y': {
+    labels: ['Oct', 'Nov', 'Dec', 'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sept'],
+    values: [140, 165, 190, 210, 225, 248, 265, 280, 301, 320, 340, 362],
+  },
+};
+
+const TRANSACTIONS_TOTAL = 2944;
+const SERVICES_CREATED_TOTAL = 168;
+const CLAIM_DEFS_TOTAL = 261;
+const SCHEMAS_TOTAL = 259;
+const ISSUERS_TOTAL = 10;
+const VERIFIERS_TOTAL = 1;
+
 const STAT_CARDS = [
-  { icon: Building2, value: 10, label: 'Issuers' },
-  { icon: ShieldCheck, value: 1, label: 'Verifiers' },
-  { icon: ArrowLeftRight, value: 25, label: 'Services' },
-  { icon: FileText, value: 259, label: 'Schema Count' },
-  { icon: ClipboardList, value: 261, label: 'Claim Definition Count' },
-  { icon: Share2, value: 2944, label: 'All Transactions' },
+  { icon: Share2, value: TRANSACTIONS_TOTAL, label: 'Transactions', trend: '18%', color: '#4f46e5', bg: '#eef2ff', spark: [12, 15, 14, 18, 22, 20, 25, 28, 26, 31] },
+  { icon: Building2, value: SERVICES_CREATED_TOTAL, label: 'Services', trend: '8%', color: '#8b5cf6', bg: '#f5f3ff', spark: [20, 22, 21, 24, 23, 26, 28, 27, 30, 32] },
+  { icon: ClipboardList, value: CLAIM_DEFS_TOTAL, label: 'Claim Definitions', trend: '6%', color: '#f59e0b', bg: '#fffbeb', spark: [30, 29, 31, 33, 32, 35, 34, 37, 39, 38] },
+  { icon: FileText, value: SCHEMAS_TOTAL, label: 'Schemas', trend: '4%', color: '#10b981', bg: '#ecfdf5', spark: [40, 41, 40, 42, 44, 43, 45, 46, 45, 47] },
+  { icon: ShieldCheck, value: ISSUERS_TOTAL, label: 'Issuers', trend: '7%', color: '#06b6d4', bg: '#ecfeff', spark: [4, 5, 5, 6, 6, 7, 8, 8, 9, 10] },
+  { icon: UserCheck, value: VERIFIERS_TOTAL, label: 'Verifier', trend: null, color: '#ec4899', bg: '#fdf2f8', spark: [1, 1, 1, 1, 1, 1, 1, 1, 1, 1] },
+];
+
+const DISTRIBUTION_SEGMENTS = [
+  { label: 'NYM', value: 42, color: '#4f46e5' },
+  { label: 'Schema', value: 28, color: '#8b5cf6' },
+  { label: 'Credential', value: 21, color: '#10b981' },
+  { label: 'Claim Definition', value: 6, color: '#f59e0b' },
+  { label: 'Revocation', value: 2, color: '#ef4444' },
+  { label: 'Other', value: 1, color: '#9ca3af' },
 ];
 
 interface NodeInfo {
@@ -79,13 +127,39 @@ interface NodeInfo {
   service: string;
   did: string;
   uptime: string;
+  status: 'Operational' | 'Offline';
 }
 
+// The full mesh is 26 nodes (matches the Edge Node network); the topology
+// panel visualizes a representative sample rather than all 26 at once.
+const NODES_TOTAL = 26;
+const NODES_ONLINE = 15;
+
 const NODES: NodeInfo[] = [
-  { alias: 'Node1', port: 9701, nodeIp: '10.160.0.8', service: 'VALIDATOR', did: 'Gk3nWpXtRVYcPiab9s2Q', uptime: '482 days, 2 hours' },
-  { alias: 'Node2', port: 9703, nodeIp: '10.160.0.8', service: 'VALIDATOR', did: 'EbP4aYNeTHL6q385GuVR', uptime: '482 days, 2 hours' },
-  { alias: 'Node3', port: 9705, nodeIp: '10.160.0.8', service: 'VALIDATOR', did: '4cU41vWW82ArfxJXHkzP', uptime: '482 days, 2 hours' },
-  { alias: 'Node4', port: 9707, nodeIp: '10.160.0.8', service: 'VALIDATOR', did: 'TWwCRQRZ2ZHMJFn9TzLp', uptime: '482 days, 2 hours' },
+  { alias: 'Node1', port: 9701, nodeIp: '10.160.0.8', service: 'VALIDATOR', did: 'Gk3nWpXtRVYcPiab9s2Q', uptime: '482 days, 2 hours', status: 'Operational' },
+  { alias: 'Node2', port: 9703, nodeIp: '10.160.0.8', service: 'VALIDATOR', did: 'EbP4aYNeTHL6q385GuVR', uptime: '482 days, 2 hours', status: 'Operational' },
+  { alias: 'Node3', port: 9705, nodeIp: '10.160.0.8', service: 'VALIDATOR', did: '4cU41vWW82ArfxJXHkzP', uptime: '482 days, 2 hours', status: 'Operational' },
+  { alias: 'Node4', port: 9707, nodeIp: '10.160.0.8', service: 'VALIDATOR', did: 'TWwCRQRZ2ZHMJFn9TzLp', uptime: '482 days, 2 hours', status: 'Offline' },
+  { alias: 'Node5', port: 9709, nodeIp: '10.160.0.9', service: 'VALIDATOR', did: 'Qp82fWzNc6bLXtR9VkAe', uptime: '340 days, 6 hours', status: 'Operational' },
+  { alias: 'Node6', port: 9711, nodeIp: '10.160.0.9', service: 'OBSERVER', did: 'Nx4uHmYcTz18qBpLwR7v', uptime: '340 days, 6 hours', status: 'Operational' },
+  { alias: 'Node7', port: 9713, nodeIp: '10.160.0.9', service: 'OBSERVER', did: 'Rj93kSpXhQ6cVtY2mLbN', uptime: '198 days, 11 hours', status: 'Offline' },
+  { alias: 'Node8', port: 9715, nodeIp: '10.160.0.10', service: 'VALIDATOR', did: 'Wv7dGpMzXc3fRhT8nKjQ', uptime: '198 days, 11 hours', status: 'Operational' },
+];
+
+interface LedgerRow {
+  seq: number;
+  type: string;
+  color: string;
+  txnId: string;
+  time: string;
+}
+
+const RECENT_LEDGER: LedgerRow[] = [
+  { seq: 2944, type: 'NYM', color: '#4f46e5', txnId: 'e935fela260497524e1195c9b7f18716aecbb4ea9b...', time: '25 mins ago' },
+  { seq: 2943, type: 'Schema', color: '#8b5cf6', txnId: '3f21a8e99d4c7b2e6f0a9d114b8c1d2f7a8e92...', time: '1 hour ago' },
+  { seq: 2942, type: 'Credential', color: '#10b981', txnId: '82bd4f6e1a7c93d2e5f8a1b4dc3d7e9f31c21...', time: '2 hours ago' },
+  { seq: 2941, type: 'Claim Def', color: '#f59e0b', txnId: '17aa9b3d4e6c21f5a8b7d9e0f4c3b8a1d4c12...', time: '3 hours ago' },
+  { seq: 2940, type: 'Revocation', color: '#ef4444', txnId: '9c4d7e2a1f8b6d3c5e2a9f7b3d1c8e4a2b7f31...', time: '5 hours ago' },
 ];
 
 const CHART_W = 720;
@@ -95,12 +169,35 @@ const CHART_PAD_R = 12;
 const CHART_PAD_T = 12;
 const CHART_PAD_B = 28;
 
-function RangeToggle({ value, onChange }: { value: RangeMode; onChange: (v: RangeMode) => void }) {
-  const options: { id: RangeMode; label: string }[] = [
-    { id: 'daily', label: 'Daily' },
-    { id: 'weekly', label: 'Weekly' },
-    { id: 'monthly', label: 'Monthly' },
-  ];
+function niceGrid(maxRaw: number): number[] {
+  const step = Math.ceil((maxRaw * 1.2) / 4 / 5) * 5 || 5;
+  return [0, step, step * 2, step * 3, step * 4];
+}
+
+/** Sum of a period's values -- used so a panel's headline number actually
+ * changes when you switch its time-range toggle, instead of always
+ * showing the same fixed all-time total. */
+function sumOf(values: number[]): number {
+  return values.reduce((a, b) => a + b, 0);
+}
+
+/** % change from the first to the last point in the selected period. */
+function trendOf(values: number[]): number {
+  const first = values[0] ?? 0;
+  const last = values[values.length - 1] ?? 0;
+  if (first === 0) return last > 0 ? 100 : 0;
+  return Math.round(((last - first) / first) * 100);
+}
+
+function RangeToggle<T extends string>({
+  value,
+  onChange,
+  options,
+}: {
+  value: T;
+  onChange: (v: T) => void;
+  options: { id: T; label: string }[];
+}) {
   return (
     <div className="ncc-toggle-group" role="tablist" aria-label="Time range">
       {options.map((opt) => (
@@ -126,13 +223,26 @@ interface TooltipState {
   rows: { label: string; value: string; color: string }[];
 }
 
-function HolderAnalyticsChart({ labels, values }: { labels: string[]; values: number[] }) {
+/** Generic single-series line/area chart -- used for Transaction Activity and Network Adoption. */
+function LineChart({
+  labels,
+  values,
+  color,
+  valueLabel,
+}: {
+  labels: string[];
+  values: number[];
+  color: string;
+  valueLabel: string;
+}) {
   const wrapRef = useRef<HTMLDivElement | null>(null);
   const [tooltip, setTooltip] = useState<TooltipState | null>(null);
+  const gradientId = useRef(`ncc-line-fill-${Math.random().toString(36).slice(2)}`).current;
 
-  const maxVal = 60;
   const plotW = CHART_W - CHART_PAD_L - CHART_PAD_R;
   const plotH = CHART_H - CHART_PAD_T - CHART_PAD_B;
+  const gridValues = useMemo(() => niceGrid(Math.max(...values, 1)), [values]);
+  const maxVal = gridValues[gridValues.length - 1] || 1;
 
   const points = useMemo(
     () =>
@@ -142,13 +252,11 @@ function HolderAnalyticsChart({ labels, values }: { labels: string[]; values: nu
         v,
         label: labels[i],
       })),
-    [values, labels, plotW, plotH]
+    [values, labels, plotW, plotH, maxVal]
   );
 
   const linePath = points.map((p, i) => `${i === 0 ? 'M' : 'L'} ${p.x.toFixed(1)} ${p.y.toFixed(1)}`).join(' ');
   const areaPath = `${linePath} L ${points[points.length - 1].x.toFixed(1)} ${(CHART_PAD_T + plotH).toFixed(1)} L ${points[0].x.toFixed(1)} ${(CHART_PAD_T + plotH).toFixed(1)} Z`;
-
-  const gridValues = [0, 10, 20, 30, 40, 50, 60];
 
   const showTooltip = (p: (typeof points)[number], evt: React.MouseEvent) => {
     const wrap = wrapRef.current;
@@ -158,7 +266,7 @@ function HolderAnalyticsChart({ labels, values }: { labels: string[]; values: nu
       x: evt.clientX - rect.left,
       y: evt.clientY - rect.top,
       title: p.label,
-      rows: [{ label: 'Holder Connections', value: String(p.v), color: '#4f46e5' }],
+      rows: [{ label: valueLabel, value: String(p.v), color }],
     });
   };
 
@@ -168,13 +276,13 @@ function HolderAnalyticsChart({ labels, values }: { labels: string[]; values: nu
         className="ncc-svg-chart"
         viewBox={`0 0 ${CHART_W} ${CHART_H}`}
         role="img"
-        aria-label="Holder connections over time"
+        aria-label={valueLabel}
         onMouseLeave={() => setTooltip(null)}
       >
         <defs>
-          <linearGradient id="ncc-holder-fill" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%" stopColor="#4f46e5" stopOpacity="0.18" />
-            <stop offset="100%" stopColor="#4f46e5" stopOpacity="0" />
+          <linearGradient id={gradientId} x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stopColor={color} stopOpacity="0.18" />
+            <stop offset="100%" stopColor={color} stopOpacity="0" />
           </linearGradient>
         </defs>
 
@@ -190,8 +298,8 @@ function HolderAnalyticsChart({ labels, values }: { labels: string[]; values: nu
           );
         })}
 
-        <path d={areaPath} fill="url(#ncc-holder-fill)" stroke="none" />
-        <path d={linePath} fill="none" stroke="#4f46e5" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" />
+        <path d={areaPath} fill={`url(#${gradientId})`} stroke="none" />
+        <path d={linePath} fill="none" stroke={color} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" />
 
         {points.map((p, i) => (
           <circle
@@ -199,7 +307,7 @@ function HolderAnalyticsChart({ labels, values }: { labels: string[]; values: nu
             cx={p.x}
             cy={p.y}
             r={i === 0 || i === points.length - 1 ? 4 : 3}
-            fill="#4f46e5"
+            fill={color}
             stroke="#ffffff"
             strokeWidth={1.5}
             style={{ cursor: 'pointer' }}
@@ -229,7 +337,8 @@ function HolderAnalyticsChart({ labels, values }: { labels: string[]; values: nu
   );
 }
 
-function ServiceAnalyticsChart({
+/** Grouped two-series bar chart -- used for Service Lifecycle (Created vs Published). */
+function GroupedBarChart({
   labels,
   created,
   published,
@@ -241,16 +350,12 @@ function ServiceAnalyticsChart({
   const wrapRef = useRef<HTMLDivElement | null>(null);
   const [tooltip, setTooltip] = useState<TooltipState | null>(null);
 
-  const maxVal = Math.max(...created, ...published) * 1.25;
   const plotW = CHART_W - CHART_PAD_L - CHART_PAD_R;
   const plotH = CHART_H - CHART_PAD_T - CHART_PAD_B;
   const groupW = plotW / labels.length;
   const barW = Math.min(18, groupW / 3.2);
 
-  const gridValues = useMemo(() => {
-    const step = Math.ceil(maxVal / 4 / 5) * 5 || 5;
-    return [0, step, step * 2, step * 3, step * 4];
-  }, [maxVal]);
+  const gridValues = useMemo(() => niceGrid(Math.max(...created, ...published, 1)), [created, published]);
   const axisMax = gridValues[gridValues.length - 1] || 1;
 
   const showTooltip = (label: string, c: number, p: number, evt: React.MouseEvent) => {
@@ -263,7 +368,7 @@ function ServiceAnalyticsChart({
       title: label,
       rows: [
         { label: 'Created Service', value: String(c), color: '#4f46e5' },
-        { label: 'Published Service', value: String(p), color: '#0d9488' },
+        { label: 'Published Service', value: String(p), color: '#8b5cf6' },
       ],
     });
   };
@@ -297,7 +402,7 @@ function ServiceAnalyticsChart({
           return (
             <g key={label} onMouseMove={(e) => showTooltip(label, created[i], published[i], e)} style={{ cursor: 'pointer' }}>
               <rect x={groupX - barW - 2} y={baseY - cH} width={barW} height={cH} rx={3} fill="#4f46e5" />
-              <rect x={groupX + 2} y={baseY - pH} width={barW} height={pH} rx={3} fill="#0d9488" />
+              <rect x={groupX + 2} y={baseY - pH} width={barW} height={pH} rx={3} fill="#8b5cf6" />
               <text x={groupX} y={CHART_H - 4} textAnchor="middle" fontSize="10" fill="#9ca3af">
                 {label}
               </text>
@@ -321,21 +426,209 @@ function ServiceAnalyticsChart({
   );
 }
 
+/** Single-series bar chart -- used for Credential Activity. */
+function SingleBarChart({ labels, values, color }: { labels: string[]; values: number[]; color: string }) {
+  const wrapRef = useRef<HTMLDivElement | null>(null);
+  const [tooltip, setTooltip] = useState<TooltipState | null>(null);
+
+  const plotW = CHART_W - CHART_PAD_L - CHART_PAD_R;
+  const plotH = CHART_H - CHART_PAD_T - CHART_PAD_B;
+  const groupW = plotW / labels.length;
+  const barW = Math.min(22, groupW * 0.5);
+
+  const gridValues = useMemo(() => niceGrid(Math.max(...values, 1)), [values]);
+  const axisMax = gridValues[gridValues.length - 1] || 1;
+
+  const showTooltip = (label: string, v: number, evt: React.MouseEvent) => {
+    const wrap = wrapRef.current;
+    if (!wrap) return;
+    const rect = wrap.getBoundingClientRect();
+    setTooltip({ x: evt.clientX - rect.left, y: evt.clientY - rect.top, title: label, rows: [{ label: 'Credentials Issued', value: String(v), color }] });
+  };
+
+  return (
+    <div className="ncc-chart-wrap" ref={wrapRef} style={{ position: 'relative' }}>
+      <svg
+        className="ncc-svg-chart"
+        viewBox={`0 0 ${CHART_W} ${CHART_H}`}
+        role="img"
+        aria-label="Credentials issued over time"
+        onMouseLeave={() => setTooltip(null)}
+      >
+        {gridValues.map((gv) => {
+          const y = CHART_PAD_T + plotH - (gv / axisMax) * plotH;
+          return (
+            <g key={gv}>
+              <line x1={CHART_PAD_L} x2={CHART_W - CHART_PAD_R} y1={y} y2={y} stroke="#eef0f2" strokeWidth={1} strokeDasharray="3 4" />
+              <text x={CHART_PAD_L - 10} y={y + 3} textAnchor="end" fontSize="10" fill="#9ca3af">
+                {gv}
+              </text>
+            </g>
+          );
+        })}
+
+        {labels.map((label, i) => {
+          const groupX = CHART_PAD_L + groupW * i + groupW / 2;
+          const h = (values[i] / axisMax) * plotH;
+          const baseY = CHART_PAD_T + plotH;
+          return (
+            <g key={label} onMouseMove={(e) => showTooltip(label, values[i], e)} style={{ cursor: 'pointer' }}>
+              <rect x={groupX - barW / 2} y={baseY - h} width={barW} height={h} rx={3} fill={color} />
+              <text x={groupX} y={CHART_H - 4} textAnchor="middle" fontSize="10" fill="#9ca3af">
+                {label}
+              </text>
+            </g>
+          );
+        })}
+      </svg>
+
+      {tooltip && (
+        <div className="ncc-chart-tooltip" style={{ left: tooltip.x, top: tooltip.y }}>
+          <div>{tooltip.title}</div>
+          {tooltip.rows.map((r) => (
+            <div key={r.label}>
+              {r.label}: <span className="ncc-chart-tooltip__value">{r.value}</span>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+/** Tiny inline sparkline -- stat cards + banner live-activity indicator. No axes/labels. */
+function Sparkline({ values, color, width = 96, height = 28 }: { values: number[]; color: string; width?: number; height?: number }) {
+  const max = Math.max(...values, 1);
+  const min = Math.min(...values, 0);
+  const range = max - min || 1;
+  const points = values.map((v, i) => {
+    const x = values.length === 1 ? width / 2 : (width * i) / (values.length - 1);
+    const y = height - ((v - min) / range) * height;
+    return [x, y] as const;
+  });
+  const linePath = points.map(([x, y], i) => `${i === 0 ? 'M' : 'L'} ${x.toFixed(1)} ${y.toFixed(1)}`).join(' ');
+
+  return (
+    <svg width={width} height={height} viewBox={`0 0 ${width} ${height}`} className="ncc-sparkline" aria-hidden>
+      <path d={linePath} fill="none" stroke={color} strokeWidth={1.75} strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
+/** Donut chart built from plain SVG circles (stroke-dasharray trick) -- Transaction Distribution. */
+function DonutChart({
+  segments,
+  centerValue,
+  centerLabel,
+}: {
+  segments: { label: string; value: number; color: string }[];
+  centerValue: string;
+  centerLabel: string;
+}) {
+  const size = 190;
+  const stroke = 26;
+  const r = (size - stroke) / 2;
+  const circumference = 2 * Math.PI * r;
+  const total = segments.reduce((sum, s) => sum + s.value, 0) || 1;
+
+  let cumulative = 0;
+  const arcs = segments.map((s) => {
+    const fraction = s.value / total;
+    const dash = fraction * circumference;
+    const offset = -cumulative * circumference;
+    cumulative += fraction;
+    return { ...s, dash, offset };
+  });
+
+  return (
+    <div className="ncc-donut">
+      <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} role="img" aria-label="Transaction distribution by type">
+        <g transform={`rotate(-90 ${size / 2} ${size / 2})`}>
+          <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke="#f1f2f4" strokeWidth={stroke} />
+          {arcs.map((a) => (
+            <circle
+              key={a.label}
+              cx={size / 2}
+              cy={size / 2}
+              r={r}
+              fill="none"
+              stroke={a.color}
+              strokeWidth={stroke}
+              strokeDasharray={`${a.dash.toFixed(2)} ${(circumference - a.dash).toFixed(2)}`}
+              strokeDashoffset={a.offset.toFixed(2)}
+            />
+          ))}
+        </g>
+        <text x={size / 2} y={size / 2 - 6} textAnchor="middle" fontSize="22" fontWeight={700} fill="#111827">
+          {centerValue}
+        </text>
+        <text x={size / 2} y={size / 2 + 14} textAnchor="middle" fontSize="11" fill="#9ca3af">
+          {centerLabel}
+        </text>
+      </svg>
+
+      <div className="ncc-donut__legend">
+        {segments.map((s) => (
+          <div className="ncc-donut__legend-row" key={s.label}>
+            <span className="ncc-legend-dot" style={{ backgroundColor: s.color }} />
+            <span className="ncc-donut__legend-label">{s.label}</span>
+            <span className="ncc-donut__legend-value">{s.value}%</span>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 export function NCCScreen() {
   const navigate = useNavigate();
   const { logout } = useAuth();
   const adminProfile = getAdminProfile();
 
+  const [txnRange, setTxnRange] = useState<TxnRange>('7D');
   const [holderRange, setHolderRange] = useState<RangeMode>('monthly');
   const [serviceRange, setServiceRange] = useState<RangeMode>('weekly');
-  const [fromDate] = useState('01/12/2024');
-  const [toDate] = useState('14/09/2026');
+  const [credentialRange, setCredentialRange] = useState<RangeMode>('weekly');
+  const [environment, setEnvironment] = useState('Staging');
   const [copied, setCopied] = useState(false);
 
+  const txnData = TRANSACTION_DATASETS[txnRange];
   const holderData = HOLDER_DATASETS[holderRange];
   const serviceData = SERVICE_DATASETS[serviceRange];
+  const credentialData = CREDENTIAL_DATASETS[credentialRange];
 
   const txnId = 'f7a2c9e1b4d8365af0219cbe7a44d902e5f8c1b3a6d740fe982c1b5a03df66c';
+
+  // Headline totals + trends recomputed per panel from whichever range is
+  // currently selected there, so switching Daily/Weekly/Monthly (or
+  // 24H/7D/30D/3M/1Y) visibly changes more than just the chart shape.
+  const txnPeriodTotal = useMemo(() => sumOf(txnData.values), [txnData]);
+  const txnPeriodTrend = useMemo(() => trendOf(txnData.values), [txnData]);
+
+  const totalHolders = holderData.values[holderData.values.length - 1];
+  const holderTrend = useMemo(() => trendOf(holderData.values), [holderData]);
+
+  const credentialPeriodTotal = useMemo(() => sumOf(credentialData.values), [credentialData]);
+  const credentialPeriodTrend = useMemo(() => trendOf(credentialData.values), [credentialData]);
+
+  const servicePeriodCreated = useMemo(() => sumOf(serviceData.created), [serviceData]);
+  const servicePeriodPublished = useMemo(() => sumOf(serviceData.published), [serviceData]);
+
+  const peakTxn = useMemo(() => {
+    let peakIdx = 0;
+    txnData.values.forEach((v, i) => {
+      if (v > txnData.values[peakIdx]) peakIdx = i;
+    });
+    return { value: txnData.values[peakIdx], label: txnData.labels[peakIdx] };
+  }, [txnData]);
+
+  const peakCredential = useMemo(() => {
+    let peakIdx = 0;
+    credentialData.values.forEach((v, i) => {
+      if (v > credentialData.values[peakIdx]) peakIdx = i;
+    });
+    return { value: credentialData.values[peakIdx], label: credentialData.labels[peakIdx] };
+  }, [credentialData]);
 
   const handleCopyTxn = async () => {
     try {
@@ -428,73 +721,210 @@ export function NCCScreen() {
         </div>
       </aside>
 
-      {/* Main light-theme ledger dashboard */}
+      {/* Main light-theme network dashboard */}
       <main className="ncc-main">
-        <div className="ncc-topbar">
-          <div className="ncc-topbar__left">
-            <h1 className="ncc-topbar__title">Gamma Consortium</h1>
-          </div>
-        </div>
+        <div className="ncc-scroll">
+          {/* Status banner */}
+          <section className="ncc-banner">
+            <div className="ncc-banner__glow" aria-hidden />
+            <div className="ncc-banner__left">
+              <h1 className="ncc-banner__title">Gamma Consortium Network</h1>
+              <div className="ncc-banner__status">
+                <span className="ncc-banner__status-dot" />
+                Operational
+              </div>
+              <p className="ncc-banner__desc">All network nodes are responding normally.</p>
 
-        <div className="ncc-body">
-          <div className="ncc-left-col">
-            <div className="ncc-stats-grid">
-              {STAT_CARDS.map((card) => (
-                <div className="ncc-stat-card" key={card.label}>
-                  <div className="ncc-stat-card__top">
-                    <div className="ncc-stat-card__icon">
-                      <card.icon size={20} />
-                    </div>
-                    <button type="button" className="ncc-stat-card__view">
-                      <Share2 size={12} />
-                      View
-                    </button>
+              <div className="ncc-banner__metrics">
+                <div className="ncc-banner__metric">
+                  <div className="ncc-banner__metric-value">{NODES_ONLINE} / {NODES_TOTAL}</div>
+                  <div className="ncc-banner__metric-label">Nodes Online</div>
+                </div>
+                <div className="ncc-banner__metric">
+                  <div className="ncc-banner__metric-value">{NODES[0].uptime}</div>
+                  <div className="ncc-banner__metric-label">Network Uptime</div>
+                </div>
+                <div className="ncc-banner__metric">
+                  <div className="ncc-banner__metric-value">#{TRANSACTIONS_TOTAL}</div>
+                  <div className="ncc-banner__metric-label">Latest Transaction</div>
+                </div>
+                <div className="ncc-banner__metric">
+                  <div className="ncc-banner__metric-value">25 mins ago</div>
+                  <div className="ncc-banner__metric-label">Last Activity</div>
+                </div>
+              </div>
+            </div>
+
+            <div className="ncc-banner__right">
+              <div className="ncc-banner__env">
+                <span className="ncc-banner__env-label">Environment</span>
+                <select
+                  className="ncc-banner__env-select"
+                  value={environment}
+                  onChange={(e) => setEnvironment(e.target.value)}
+                >
+                  {/* <option value="Staging">Staging</option> */}
+                  <option value="Production">Production</option>
+                </select>
+              </div>
+
+              <div className="ncc-banner__activity">
+                <span className="ncc-banner__activity-label">Live Network Activity</span>
+                <Sparkline values={[18, 22, 19, 26, 24, 30, 27, 33, 29, 35, 31, 38]} color="#22c55e" width={140} height={36} />
+                <span className="ncc-banner__activity-status">
+                  <Radio size={11} />
+                  Normal
+                </span>
+              </div>
+
+              <div className="ncc-banner__globe" aria-hidden>
+                <Globe size={104} strokeWidth={0.75} />
+              </div>
+            </div>
+          </section>
+
+          {/* Six headline stat cards */}
+          <div className="ncc-stats-grid ncc-stats-grid--6">
+            {STAT_CARDS.map((card) => (
+              <div className="ncc-stat-card" key={card.label}>
+                <div className="ncc-stat-card__top">
+                  <div className="ncc-stat-card__icon" style={{ backgroundColor: card.bg, color: card.color }}>
+                    <card.icon size={18} />
+                  </div>
+                  {card.trend ? (
+                    <span className="ncc-stat-card__trend">
+                      <TrendingUp size={11} />
+                      {card.trend}
+                    </span>
+                  ) : (
+                    <span className="ncc-stat-card__trend ncc-stat-card__trend--flat">—</span>
+                  )}
+                </div>
+                <div>
+                  <div className="ncc-stat-card__number">{card.value.toLocaleString()}</div>
+                  <div className="ncc-stat-card__label">{card.label}</div>
+                </div>
+                <Sparkline values={card.spark} color={card.color} width={110} height={26} />
+              </div>
+            ))}
+          </div>
+
+          {/* Transaction Activity + Transaction Distribution */}
+          <div className="ncc-grid-2">
+            <div className="ncc-panel">
+              <div className="ncc-panel__header">
+                <div className="ncc-panel__header-left">
+                  <div className="ncc-panel__icon">
+                    <ArrowLeftRight size={18} />
                   </div>
                   <div>
-                    <div className="ncc-stat-card__number">{card.value.toLocaleString()}</div>
-                    <div className="ncc-stat-card__label">{card.label}</div>
+                    <h2 className="ncc-panel__title">Transaction Activity</h2>
+                    <p className="ncc-panel__subtitle">Total transactions over time</p>
                   </div>
                 </div>
-              ))}
+                <RangeToggle value={txnRange} onChange={setTxnRange} options={TXN_RANGE_OPTIONS.map((id) => ({ id, label: id }))} />
+              </div>
+
+              <div className="ncc-panel__headline">
+                <span className="ncc-panel__headline-value">{txnPeriodTotal.toLocaleString()}</span>
+                <span className={`ncc-panel__headline-trend ${txnPeriodTrend < 0 ? 'ncc-panel__headline-trend--down' : ''}`}>
+                  <TrendingUp size={13} />
+                  {txnPeriodTrend >= 0 ? '+' : ''}
+                  {txnPeriodTrend}%
+                </span>
+                <span className="ncc-panel__headline-label">transactions in this period</span>
+              </div>
+
+              <LineChart labels={txnData.labels} values={txnData.values} color="#4f46e5" valueLabel="Transactions" />
             </div>
 
             <div className="ncc-panel">
               <div className="ncc-panel__header">
                 <div className="ncc-panel__header-left">
                   <div className="ncc-panel__icon">
+                    <FileText size={18} />
+                  </div>
+                  <div>
+                    <h2 className="ncc-panel__title">Transaction Distribution</h2>
+                    <p className="ncc-panel__subtitle">Breakdown by transaction type</p>
+                  </div>
+                </div>
+              </div>
+
+              <DonutChart segments={DISTRIBUTION_SEGMENTS} centerValue={TRANSACTIONS_TOTAL.toLocaleString()} centerLabel="Transactions" />
+            </div>
+          </div>
+
+          {/* Network Adoption + Credential Activity + Service Lifecycle */}
+          <div className="ncc-grid-3">
+            <div className="ncc-panel">
+              <div className="ncc-panel__header">
+                <div className="ncc-panel__header-left">
+                  <div className="ncc-panel__icon" style={{ backgroundColor: '#f5f3ff', color: '#8b5cf6' }}>
                     <UsersRound size={18} />
                   </div>
                   <div>
-                    <h2 className="ncc-panel__title">Holder Analytics</h2>
-                    <p className="ncc-panel__subtitle">Number of holders over time</p>
+                    <h2 className="ncc-panel__title">Network Adoption</h2>
+                    <p className="ncc-panel__subtitle">Holder connections over time</p>
                   </div>
                 </div>
-                <RangeToggle value={holderRange} onChange={setHolderRange} />
+              </div>
+              <RangeToggle
+                value={holderRange}
+                onChange={setHolderRange}
+                options={[
+                  { id: 'daily', label: 'Daily' },
+                  { id: 'weekly', label: 'Weekly' },
+                  { id: 'monthly', label: 'Monthly' },
+                ]}
+              />
+
+              <div className="ncc-panel__headline ncc-panel__headline--compact">
+                <span className="ncc-panel__headline-value">{totalHolders}</span>
+                <span className={`ncc-panel__headline-trend ${holderTrend < 0 ? 'ncc-panel__headline-trend--down' : ''}`}>
+                  <TrendingUp size={13} />
+                  {holderTrend >= 0 ? '+' : ''}
+                  {holderTrend}%
+                </span>
+                <span className="ncc-panel__headline-label">total holders</span>
               </div>
 
-              <div className="ncc-date-row">
-                <div className="ncc-date-field">
-                  <span className="ncc-date-field__label">From</span>
-                  <span className="ncc-date-input">
-                    <Calendar size={14} />
-                    {fromDate}
-                  </span>
+              <LineChart labels={holderData.labels} values={holderData.values} color="#8b5cf6" valueLabel="Holders" />
+            </div>
+
+            <div className="ncc-panel">
+              <div className="ncc-panel__header">
+                <div className="ncc-panel__header-left">
+                  <div className="ncc-panel__icon" style={{ backgroundColor: '#ecfdf5', color: '#10b981' }}>
+                    <ClipboardList size={18} />
+                  </div>
+                  <div>
+                    <h2 className="ncc-panel__title">Credential Activity</h2>
+                    <p className="ncc-panel__subtitle">Credentials issued over time</p>
+                  </div>
                 </div>
-                <div className="ncc-date-field">
-                  <span className="ncc-date-field__label">To</span>
-                  <span className="ncc-date-input">
-                    <Calendar size={14} />
-                    {toDate}
-                  </span>
-                </div>
+              </div>
+              <RangeToggle
+                value={credentialRange}
+                onChange={setCredentialRange}
+                options={[
+                  { id: 'daily', label: 'Daily' },
+                  { id: 'weekly', label: 'Weekly' },
+                  { id: 'monthly', label: 'Monthly' },
+                ]}
+              />
+
+              <div className="ncc-panel__headline ncc-panel__headline--compact">
+                <span className="ncc-panel__headline-value">{credentialPeriodTotal}</span>
+                <span className={`ncc-panel__headline-trend ${credentialPeriodTrend < 0 ? 'ncc-panel__headline-trend--down' : ''}`}>
+                  <TrendingUp size={13} />
+                  {credentialPeriodTrend >= 0 ? '+' : ''}
+                  {credentialPeriodTrend}%
+                </span>
+                <span className="ncc-panel__headline-label">credentials issued</span>
               </div>
 
-              <div className="ncc-legend-row">
-                <span className="ncc-legend-dot" style={{ backgroundColor: '#4f46e5' }} />
-                Holder Connections
-              </div>
-
-              <HolderAnalyticsChart labels={holderData.labels} values={holderData.values} />
+              <SingleBarChart labels={credentialData.labels} values={credentialData.values} color="#10b981" />
             </div>
 
             <div className="ncc-panel">
@@ -504,110 +934,248 @@ export function NCCScreen() {
                     <Settings2 size={18} />
                   </div>
                   <div>
-                    <h2 className="ncc-panel__title">Service Analytics</h2>
-                    <p className="ncc-panel__subtitle">Created Service vs Published Service</p>
+                    <h2 className="ncc-panel__title">Service Lifecycle</h2>
+                    <p className="ncc-panel__subtitle">Created vs Published services</p>
                   </div>
                 </div>
-                <RangeToggle value={serviceRange} onChange={setServiceRange} />
               </div>
 
-              <div className="ncc-legend-row">
-                <span className="ncc-legend-dot" style={{ backgroundColor: '#4f46e5' }} />
-                Created Service
-                <span className="ncc-legend-dot" style={{ backgroundColor: '#0d9488', marginLeft: 14 }} />
-                Published Service
+              <div className="ncc-lifecycle-numbers">
+                <div>
+                  <div className="ncc-lifecycle-numbers__value" style={{ color: '#4f46e5' }}>
+                    {servicePeriodCreated}
+                  </div>
+                  <div className="ncc-lifecycle-numbers__label">Created</div>
+                </div>
+                <div style={{ textAlign: 'right' }}>
+                  <div className="ncc-lifecycle-numbers__value" style={{ color: '#8b5cf6' }}>
+                    {servicePeriodPublished}
+                  </div>
+                  <div className="ncc-lifecycle-numbers__label">Published</div>
+                </div>
               </div>
 
-              <ServiceAnalyticsChart labels={serviceData.labels} created={serviceData.created} published={serviceData.published} />
+              <div className="ncc-lifecycle-bar">
+                <div
+                  className="ncc-lifecycle-bar__segment"
+                  style={{ width: `${(servicePeriodCreated / (servicePeriodCreated + servicePeriodPublished || 1)) * 100}%`, backgroundColor: '#4f46e5' }}
+                />
+                <div
+                  className="ncc-lifecycle-bar__segment"
+                  style={{ width: `${(servicePeriodPublished / (servicePeriodCreated + servicePeriodPublished || 1)) * 100}%`, backgroundColor: '#8b5cf6' }}
+                />
+              </div>
+
+              <RangeToggle
+                value={serviceRange}
+                onChange={setServiceRange}
+                options={[
+                  { id: 'daily', label: 'Daily' },
+                  { id: 'weekly', label: 'Weekly' },
+                  { id: 'monthly', label: 'Monthly' },
+                ]}
+              />
+
+              <GroupedBarChart labels={serviceData.labels} created={serviceData.created} published={serviceData.published} />
             </div>
+          </div>
 
-            <div className="ncc-panel">
+          {/* Network Topology + Insights / Recent Ledger Activity */}
+          <div className="ncc-grid-2 ncc-grid-2--bottom ncc-grid-2--stretch">
+            <div className="ncc-panel ncc-panel--fill">
               <div className="ncc-panel__header">
                 <div className="ncc-panel__header-left">
                   <div className="ncc-panel__icon">
-                    <ArrowLeftRight size={18} />
+                    <Boxes size={18} />
                   </div>
                   <div>
-                    <h2 className="ncc-panel__title">Last Transaction</h2>
-                    <p className="ncc-panel__subtitle">Most recent ledger entry</p>
+                    <h2 className="ncc-panel__title">Network Topology</h2>
+                    <p className="ncc-panel__subtitle">Live view of network nodes</p>
+                  </div>
+                </div>
+                <span className="ncc-topology__ratio-badge">
+                  {NODES_ONLINE} / {NODES_TOTAL} Nodes Connected
+                </span>
+              </div>
+
+              <div className="ncc-topology">
+                <svg className="ncc-topology__lines" viewBox="0 0 300 300" preserveAspectRatio="none" aria-hidden>
+                  <line x1="150" y1="150" x2="50" y2="50" stroke="#c7d2fe" strokeWidth="1.5" strokeDasharray="3 4" />
+                  <line x1="150" y1="150" x2="150" y2="50" stroke="#c7d2fe" strokeWidth="1.5" strokeDasharray="3 4" />
+                  <line x1="150" y1="150" x2="250" y2="50" stroke="#c7d2fe" strokeWidth="1.5" strokeDasharray="3 4" />
+                  <line x1="150" y1="150" x2="50" y2="150" stroke="#c7d2fe" strokeWidth="1.5" strokeDasharray="3 4" />
+                  <line x1="150" y1="150" x2="250" y2="150" stroke="#c7d2fe" strokeWidth="1.5" strokeDasharray="3 4" />
+                  <line x1="150" y1="150" x2="50" y2="250" stroke="#c7d2fe" strokeWidth="1.5" strokeDasharray="3 4" />
+                  <line x1="150" y1="150" x2="150" y2="250" stroke="#c7d2fe" strokeWidth="1.5" strokeDasharray="3 4" />
+                  <line x1="150" y1="150" x2="250" y2="250" stroke="#c7d2fe" strokeWidth="1.5" strokeDasharray="3 4" />
+                </svg>
+
+                <div className="ncc-topology__grid">
+                  {NODES.slice(0, 4).map((node) => (
+                    <div className="ncc-topology__node" key={node.alias}>
+                      <span className="ncc-topology__node-name">{node.alias}</span>
+                      <span className={`ncc-topology__node-status ${node.status === 'Offline' ? 'ncc-topology__node-status--offline' : ''}`}>
+                        <span className={`ncc-topology__dot ${node.status === 'Offline' ? 'ncc-topology__dot--offline' : ''}`} />
+                        {node.status}
+                      </span>
+                      <span className="ncc-topology__node-addr">
+                        {node.nodeIp}:{node.port}
+                      </span>
+                    </div>
+                  ))}
+
+                  <div className="ncc-topology__hub">
+                    <img src={dtakLogo} alt="" className="ncc-topology__hub-logo" />
+                    <span>DTAK</span>
+                  </div>
+
+                  {NODES.slice(4, 8).map((node) => (
+                    <div className="ncc-topology__node" key={node.alias}>
+                      <span className="ncc-topology__node-name">{node.alias}</span>
+                      <span className={`ncc-topology__node-status ${node.status === 'Offline' ? 'ncc-topology__node-status--offline' : ''}`}>
+                        <span className={`ncc-topology__dot ${node.status === 'Offline' ? 'ncc-topology__dot--offline' : ''}`} />
+                        {node.status}
+                      </span>
+                      <span className="ncc-topology__node-addr">
+                        {node.nodeIp}:{node.port}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+
+                <div className="ncc-topology__footnote">+{NODES_TOTAL - NODES.length} more nodes across the network</div>
+              </div>
+            </div>
+
+            <div className="ncc-stack">
+              <div className="ncc-panel">
+                <div className="ncc-panel__header">
+                  <div className="ncc-panel__header-left">
+                    <div className="ncc-panel__icon">
+                      <ArrowLeftRight size={18} />
+                    </div>
+                    <div>
+                      <h2 className="ncc-panel__title">Network Insights</h2>
+                      <p className="ncc-panel__subtitle">Key highlights from network activity</p>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="ncc-insights">
+                  <div className="ncc-insight-tile">
+                    <span className="ncc-insight-tile__icon" style={{ backgroundColor: '#eef2ff', color: '#4f46e5' }}>
+                      <TrendingUp size={16} />
+                    </span>
+                    <div className="ncc-insight-tile__value">{peakTxn.value} transactions</div>
+                    <div className="ncc-insight-tile__label">Peak transaction activity</div>
+                    <div className="ncc-insight-tile__meta">{peakTxn.label}</div>
+                  </div>
+                  <div className="ncc-insight-tile">
+                    <span className="ncc-insight-tile__icon" style={{ backgroundColor: '#ecfdf5', color: '#10b981' }}>
+                      <UsersRound size={16} />
+                    </span>
+                    <div className="ncc-insight-tile__value">{peakCredential.value} credentials</div>
+                    <div className="ncc-insight-tile__label">Highest credential issuance</div>
+                    <div className="ncc-insight-tile__meta">{peakCredential.label}</div>
+                  </div>
+                  <div className="ncc-insight-tile">
+                    <span className="ncc-insight-tile__icon" style={{ backgroundColor: '#fffbeb', color: '#f59e0b' }}>
+                      <Clock size={16} />
+                    </span>
+                    <div className="ncc-insight-tile__value">{NODES[0].uptime.split(',')[0]}</div>
+                    <div className="ncc-insight-tile__label">Network uptime</div>
+                    <div className="ncc-insight-tile__meta">and counting</div>
                   </div>
                 </div>
               </div>
 
-              <div className="ncc-txn-id-row">
-                <div className="ncc-txn-id-row__left">
-                  <span className="ncc-txn-id-row__label">
-                    <Hash size={13} /> Txn Id
+              <div className="ncc-panel">
+                <div className="ncc-panel__header">
+                  <div className="ncc-panel__header-left">
+                    <div className="ncc-panel__icon">
+                      <ClipboardList size={18} />
+                    </div>
+                    <div>
+                      <h2 className="ncc-panel__title">Recent Ledger Activity</h2>
+                      <p className="ncc-panel__subtitle">Latest transactions on the network</p>
+                    </div>
+                  </div>
+                  <span className="ncc-view-all">
+                    View all <ArrowUpRight size={13} />
                   </span>
-                  <span className="ncc-txn-id-row__value">{txnId}</span>
                 </div>
-                <button type="button" className="ncc-copy-btn" onClick={handleCopyTxn} title="Copy transaction ID">
-                  <Copy size={15} />
-                </button>
-              </div>
-              {copied && <div style={{ fontSize: 12, color: '#0d9488', marginTop: -8, marginBottom: 8 }}>Copied!</div>}
 
-              <div className="ncc-txn-grid">
-                <div className="ncc-txn-field">
-                  <div className="ncc-txn-field__label">Tx Date</div>
-                  <div className="ncc-txn-field__value">2026-09-14 09:00:02</div>
-                </div>
-                <div className="ncc-txn-field">
-                  <div className="ncc-txn-field__label">Tx Type</div>
-                  <div className="ncc-txn-field__value ncc-txn-field__value--link">NYM</div>
-                </div>
-                <div className="ncc-txn-field">
-                  <div className="ncc-txn-field__label">Tx Sq No</div>
-                  <div className="ncc-txn-field__value">2944</div>
-                </div>
-                <div className="ncc-txn-field">
-                  <div className="ncc-txn-field__label">Time Ago</div>
-                  <div className="ncc-txn-field__value">25 mins, 16 secs ago</div>
-                </div>
+                <table className="ncc-ledger-table">
+                  <thead>
+                    <tr>
+                      <th>#</th>
+                      <th>Type</th>
+                      <th>Transaction ID</th>
+                      <th>Time</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {RECENT_LEDGER.map((row) => (
+                      <tr key={row.seq}>
+                        <td>{row.seq}</td>
+                        <td>
+                          <span className="ncc-ledger-badge" style={{ backgroundColor: `${row.color}18`, color: row.color }}>
+                            {row.type}
+                          </span>
+                        </td>
+                        <td className="ncc-ledger-table__id">{row.txnId}</td>
+                        <td className="ncc-ledger-table__time">{row.time}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
               </div>
             </div>
           </div>
 
-          <div className="ncc-right-col">
-            <h2 className="ncc-right-col__title">Network Health</h2>
-            <p className="ncc-right-col__subtitle">Nodes: {NODES.length}</p>
-
-            {NODES.map((node) => (
-              <div className="ncc-node-card" key={node.alias}>
-                <div className="ncc-node-card__header">
-                  <span className="ncc-node-card__globe">
-                    <Globe size={15} />
-                  </span>
-                  <span className="ncc-node-card__name">{node.alias}</span>
+          {/* Last Transaction detail (existing panel, kept for the copyable full txn id) */}
+          <div className="ncc-panel">
+            <div className="ncc-panel__header">
+              <div className="ncc-panel__header-left">
+                <div className="ncc-panel__icon">
+                  <ArrowLeftRight size={18} />
                 </div>
-                <div className="ncc-node-card__grid">
-                  <div>
-                    <div className="ncc-node-field__label">Alias</div>
-                    <div className="ncc-node-field__value">{node.alias}</div>
-                  </div>
-                  <div>
-                    <div className="ncc-node-field__label">Node IP</div>
-                    <div className="ncc-node-field__value">{node.nodeIp}</div>
-                  </div>
-                  <div>
-                    <div className="ncc-node-field__label">Port</div>
-                    <div className="ncc-node-field__value">{node.port}</div>
-                  </div>
-                  <div>
-                    <div className="ncc-node-field__label">Service</div>
-                    <div className="ncc-node-field__value">{node.service}</div>
-                  </div>
-                  <div className="ncc-node-card__grid--full">
-                    <div className="ncc-node-field__label">DID</div>
-                    <div className="ncc-node-field__value ncc-node-field__value--mono">{node.did}</div>
-                  </div>
-                  <div className="ncc-node-card__grid--full">
-                    <div className="ncc-node-field__label">Uptime</div>
-                    <div className="ncc-node-field__value">{node.uptime}</div>
-                  </div>
+                <div>
+                  <h2 className="ncc-panel__title">Last Transaction</h2>
+                  <p className="ncc-panel__subtitle">Most recent ledger entry</p>
                 </div>
               </div>
-            ))}
+            </div>
+
+            <div className="ncc-txn-id-row">
+              <div className="ncc-txn-id-row__left">
+                <span className="ncc-txn-id-row__label">Txn Id</span>
+                <span className="ncc-txn-id-row__value">{txnId}</span>
+              </div>
+              <button type="button" className="ncc-copy-btn" onClick={handleCopyTxn} title="Copy transaction ID">
+                <Copy size={15} />
+              </button>
+            </div>
+            {copied && <div style={{ fontSize: 12, color: '#0d9488', marginTop: -8, marginBottom: 8 }}>Copied!</div>}
+
+            <div className="ncc-txn-grid">
+              <div className="ncc-txn-field">
+                <div className="ncc-txn-field__label">Tx Date</div>
+                <div className="ncc-txn-field__value">2026-09-14 09:00:02</div>
+              </div>
+              <div className="ncc-txn-field">
+                <div className="ncc-txn-field__label">Tx Type</div>
+                <div className="ncc-txn-field__value ncc-txn-field__value--link">NYM</div>
+              </div>
+              <div className="ncc-txn-field">
+                <div className="ncc-txn-field__label">Tx Sq No</div>
+                <div className="ncc-txn-field__value">{TRANSACTIONS_TOTAL}</div>
+              </div>
+              <div className="ncc-txn-field">
+                <div className="ncc-txn-field__label">Time Ago</div>
+                <div className="ncc-txn-field__value">25 mins, 16 secs ago</div>
+              </div>
+            </div>
           </div>
         </div>
       </main>
