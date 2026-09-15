@@ -12,6 +12,8 @@ import {
   Loader2,
   Layers,
   Check,
+  X,
+  Lock,
 } from 'lucide-react';
 import {
   MAP_CONFIG,
@@ -23,7 +25,12 @@ import {
   getCachedOrUrlStyle,
 } from '@/config/mapConfig';
 import { toMGRS } from '@/utils/mgrs';
+import { boundsOf } from '@/utils/geo';
 import { OverlayManager, type OverlayItem } from './OverlayManager';
+import { addMapShareOverlay, buildFields, KIND_ICON } from './mapShareOverlay';
+import { mapShareIconSvg } from './mapShareIcons';
+import { mapShareKindBadge, mapShareLabel } from '@/utils/mapShareParsing';
+import type { MapShareItem } from '@/utils/mapShareParsing';
 import './MapView.css';
 
 // Configure MapLibre worker URL explicitly using Vite worker bundler
@@ -34,6 +41,9 @@ interface MapViewProps {
   initialZoom?: number;
   initialPitch?: number;
   initialBearing?: number;
+  /** A map-share item opened from a chat card -- drawn on this live map and flown to. */
+  focusItem?: MapShareItem | null;
+  focusSender?: string;
 }
 
 export function MapView({
@@ -41,10 +51,15 @@ export function MapView({
   initialZoom = MAP_CONFIG.initialZoom,
   initialPitch = MAP_CONFIG.initialPitch,
   initialBearing = MAP_CONFIG.initialBearing,
+  focusItem = null,
+  focusSender,
 }: MapViewProps) {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const mapRef = useRef<maplibregl.Map | null>(null);
   const markerRef = useRef<maplibregl.Marker | null>(null);
+  const focusOverlayRef = useRef<ReturnType<typeof addMapShareOverlay> | null>(null);
+
+  const [focus, setFocus] = useState<MapShareItem | null>(focusItem);
 
   const [activeStyleId, setActiveStyleId] = useState<string>('streets-v4-dark');
   const [loadingStyleId, setLoadingStyleId] = useState<string | null>(null);
@@ -79,6 +94,89 @@ export function MapView({
   const pendingStyleIdRef = useRef<string | null>(null);
   const hasPreloadedRef = useRef<boolean>(false);
   const stylePanelWrapperRef = useRef<HTMLDivElement | null>(null);
+
+  // Keep a ref to the focused share item so the style.load handler (attached
+  // once at mount) can always redraw it after a style swap without going stale.
+  const focusRef = useRef<MapShareItem | null>(focus);
+  useEffect(() => {
+    focusRef.current = focus;
+  }, [focus]);
+
+  // A fresh chat-card click always produces a newly-parsed object, so this
+  // fires again even for "the same" item re-opened after being dismissed.
+  useEffect(() => {
+    if (focusItem) setFocus(focusItem);
+  }, [focusItem]);
+
+  // Draws (or redraws) a map-share overlay for `item`, optionally flying the camera to it.
+  const drawFocus = useCallback((map: maplibregl.Map, item: MapShareItem, opts: { fly: boolean }) => {
+    if (focusOverlayRef.current) {
+      focusOverlayRef.current.remove();
+      focusOverlayRef.current = null;
+    }
+    const overlay = addMapShareOverlay(map, item, 'focus-share');
+    focusOverlayRef.current = overlay;
+
+    if (opts.fly) {
+      // With 3D terrain on, MapLibre clamps a Marker's DOM position to the
+      // terrain surface -- if the DEM tile for this (freshly-flown-to) area
+      // hasn't loaded yet, the marker briefly renders below the surface and
+      // is invisible until some later zoom/pan forces a recompute. A shared
+      // pin doesn't need 3D anyway, so view it flat/terrain-off, same as the
+      // dedicated Shared Map screen already does -- sidesteps the bug outright.
+      disableTerrain(map);
+
+      const { boundsPoints } = overlay;
+      if (boundsPoints.length > 1) {
+        const [sw, ne] = boundsOf(boundsPoints);
+        map.fitBounds([sw, ne], { padding: 120, maxZoom: 17, duration: 900, pitch: 0 });
+      } else if (boundsPoints.length === 1) {
+        map.flyTo({
+          center: boundsPoints[0],
+          zoom: 16,
+          pitch: 0,
+          duration: 1200,
+          essential: true,
+        });
+      }
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const handleClearFocus = useCallback(() => {
+    if (focusOverlayRef.current) {
+      focusOverlayRef.current.remove();
+      focusOverlayRef.current = null;
+    }
+    setFocus(null);
+    // Restore terrain if the user had 3D mode on before a focus flattened it.
+    const map = mapRef.current;
+    if (map && is3DModeRef.current) {
+      enableTerrain(map);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Draw / clear the overlay whenever the focused item changes.
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map) return;
+
+    if (!focus) {
+      if (focusOverlayRef.current) {
+        focusOverlayRef.current.remove();
+        focusOverlayRef.current = null;
+      }
+      return;
+    }
+
+    const run = () => drawFocus(map, focus, { fly: true });
+    if (map.isStyleLoaded()) {
+      run();
+    } else {
+      map.once('load', run);
+    }
+  }, [focus, drawFocus]);
 
   // Close Map Style Panel when clicking outside
   useEffect(() => {
@@ -263,7 +361,15 @@ export function MapView({
 
     // Handle style loading (initial load + whenever setStyle is called)
     map.on('style.load', () => {
-      if (is3DModeRef.current) {
+      // A style swap wipes our custom sources/layers -- redraw a pending focus
+      // item first. Fly the camera only the first time (fresh mount); a later
+      // style swap should just restore the overlay in place. Terrain stays
+      // off while a focus is showing (see drawFocus) so a freshly-flown-to
+      // marker doesn't get hidden by not-yet-loaded DEM tiles.
+      if (focusRef.current) {
+        const hadOverlay = focusOverlayRef.current !== null;
+        drawFocus(map, focusRef.current, { fly: !hadOverlay });
+      } else if (is3DModeRef.current) {
         enableTerrain(map);
       }
       setup3DBuildings(map);
@@ -305,6 +411,7 @@ export function MapView({
         markerRef.current.remove();
         markerRef.current = null;
       }
+      focusOverlayRef.current = null;
       if (mapRef.current) {
         mapRef.current.remove();
         mapRef.current = null;
@@ -318,6 +425,7 @@ export function MapView({
     enableTerrain,
     setup3DBuildings,
     updateMapCenterInfo,
+    drawFocus,
   ]);
 
   // Handle individual overlay toggle
@@ -561,6 +669,36 @@ export function MapView({
           <span className="map-coord-value">{toMGRS(currentCenter[0], currentCenter[1])}</span>
         </div>
       </div>
+
+      {/* Focused Shared-Item Panel (opened from a chat card) */}
+      {focus && (
+        <aside className="map-focus-panel" aria-label="Shared map item details">
+          <div className="map-focus-panel__header">
+            <span className={`map-focus-panel__icon map-focus-panel__icon--${focus._messageType}`}>
+              <span dangerouslySetInnerHTML={{ __html: mapShareIconSvg(KIND_ICON[focus._messageType], 16) }} />
+            </span>
+            <div className="map-focus-panel__heading">
+              <span className="map-focus-panel__badge">{mapShareKindBadge(focus._messageType)}</span>
+              <span className="map-focus-panel__title">{mapShareLabel(focus)}</span>
+            </div>
+            <Lock size={11} className="map-focus-panel__lock" aria-label="Encrypted" />
+            <button type="button" className="map-focus-panel__close" onClick={handleClearFocus} aria-label="Close">
+              <X size={14} />
+            </button>
+          </div>
+
+          {focusSender && <div className="map-focus-panel__sender">Shared by {focusSender}</div>}
+
+          <div className="map-focus-panel__fields">
+            {buildFields(focus).map((f) => (
+              <div className="map-focus-panel__field" key={f.label}>
+                <span className="map-focus-panel__field-label">{f.label}</span>
+                <span className="map-focus-panel__field-value">{f.value}</span>
+              </div>
+            ))}
+          </div>
+        </aside>
+      )}
 
       {/* Right-Side Vertical Map Controls Column (52px x 52px Buttons) */}
       <div className="map-controls-stack" aria-label="Map Navigation Controls">

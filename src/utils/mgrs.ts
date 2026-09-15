@@ -86,6 +86,139 @@ interface UtmResult {
   northing: number;
 }
 
+// --- Inverse conversion: MGRS string -> [lng, lat] -----------------------
+// Standard MGRS decode (100km-square lettering skips I/O), independent of
+// the forward converter above -- needed to place `dtak.*.v1` payloads that
+// only carry MGRS text (no raw lat/lng), e.g. bearing origin/destination.
+
+const SET_ORIGIN_COLUMN_LETTERS = 'AJSAJS';
+const SET_ORIGIN_ROW_LETTERS = 'AFAFAF';
+
+const MIN_NORTHING_BY_BAND: Record<string, number> = {
+  C: 1100000, D: 2000000, E: 2800000, F: 3700000, G: 4600000, H: 5500000,
+  J: 6400000, K: 7300000, L: 8200000, M: 9100000,
+  N: 0, P: 800000, Q: 1700000, R: 2600000, S: 3500000,
+  T: 4400000, U: 5300000, V: 6200000, W: 7000000, X: 7900000,
+};
+
+function get100KSetForZone(zone: number): number {
+  const setNumber = zone % 6;
+  return setNumber === 0 ? 6 : setNumber;
+}
+
+function getEastingFromChar(letter: string, set: number): number {
+  let curCol = SET_ORIGIN_COLUMN_LETTERS.charCodeAt(set - 1);
+  let eastingValue = 100000;
+  let rewound = false;
+  const target = letter.charCodeAt(0);
+  const A = 65, I = 73, O = 79, Z = 90;
+  while (curCol !== target) {
+    curCol++;
+    if (curCol === I) curCol++;
+    if (curCol === O) curCol++;
+    if (curCol > Z) {
+      if (rewound) return NaN;
+      curCol = A;
+      rewound = true;
+    }
+    eastingValue += 100000;
+  }
+  return eastingValue;
+}
+
+function getNorthingFromChar(letter: string, set: number): number {
+  let curRow = SET_ORIGIN_ROW_LETTERS.charCodeAt(set - 1);
+  let northingValue = 0;
+  const target = letter.charCodeAt(0);
+  const A = 65, I = 73, O = 79, V = 86;
+  while (curRow !== target) {
+    curRow++;
+    if (curRow === I) curRow++;
+    if (curRow === O) curRow++;
+    if (curRow > V) curRow = A;
+    northingValue += 100000;
+  }
+  return northingValue;
+}
+
+function utmToLatLng(zoneNumber: number, zoneLetter: string, easting: number, northing: number): [number, number] {
+  const a = 6378137.0;
+  const eccSquared = 0.00669438;
+  const k0 = 0.9996;
+  const e1 = (1 - Math.sqrt(1 - eccSquared)) / (1 + Math.sqrt(1 - eccSquared));
+
+  const x = easting - 500000.0;
+  let y = northing;
+  if (zoneLetter < 'N') y -= 10000000.0; // southern hemisphere bands
+
+  const eccPrimeSquared = eccSquared / (1 - eccSquared);
+  const M = y / k0;
+  const mu = M / (a * (1 - eccSquared / 4 - (3 * eccSquared * eccSquared) / 64 - (5 * eccSquared ** 3) / 256));
+
+  const phi1Rad =
+    mu +
+    ((3 * e1) / 2 - (27 * e1 ** 3) / 32) * Math.sin(2 * mu) +
+    ((21 * e1 * e1) / 16 - (55 * e1 ** 4) / 32) * Math.sin(4 * mu) +
+    ((151 * e1 ** 3) / 96) * Math.sin(6 * mu);
+
+  const N1 = a / Math.sqrt(1 - eccSquared * Math.sin(phi1Rad) ** 2);
+  const T1 = Math.tan(phi1Rad) ** 2;
+  const C1 = eccPrimeSquared * Math.cos(phi1Rad) ** 2;
+  const R1 = (a * (1 - eccSquared)) / Math.pow(1 - eccSquared * Math.sin(phi1Rad) ** 2, 1.5);
+  const D = x / (N1 * k0);
+
+  let lat =
+    phi1Rad -
+    ((N1 * Math.tan(phi1Rad)) / R1) *
+      ((D * D) / 2 -
+        ((5 + 3 * T1 + 10 * C1 - 4 * C1 * C1 - 9 * eccPrimeSquared) * D ** 4) / 24 +
+        ((61 + 90 * T1 + 298 * C1 + 45 * T1 * T1 - 252 * eccPrimeSquared - 3 * C1 * C1) * D ** 6) / 720);
+  lat = (lat * 180) / Math.PI;
+
+  let lng =
+    (D -
+      ((1 + 2 * T1 + C1) * D ** 3) / 6 +
+      ((5 - 2 * C1 + 28 * T1 - 3 * C1 * C1 + 8 * eccPrimeSquared + 24 * T1 * T1) * D ** 5) / 120) /
+    Math.cos(phi1Rad);
+  lng = (zoneNumber - 1) * 6 - 180 + 3 + (lng * 180) / Math.PI;
+
+  return [lng, lat];
+}
+
+/** Parses an MGRS string (e.g. "43P GQ 82945 35615") back into [lng, lat] (WGS84 degrees), or null if unparsable. */
+export function fromMGRS(mgrs: string | undefined | null): [number, number] | null {
+  if (!mgrs) return null;
+  const cleaned = mgrs.trim().toUpperCase().replace(/\s+/g, ' ');
+  const match = cleaned.match(/^(\d{1,2})([C-HJ-NP-X])\s([A-HJ-NP-Z])([A-HJ-NP-V])\s(\d+)\s(\d+)$/);
+  if (!match) return null;
+
+  const zoneNumber = parseInt(match[1], 10);
+  const zoneLetter = match[2];
+  const colLetter = match[3];
+  const rowLetter = match[4];
+  const eDigits = match[5];
+  const nDigits = match[6];
+  if (eDigits.length !== nDigits.length) return null;
+
+  const precision = eDigits.length;
+  const scale = Math.pow(10, 5 - precision);
+
+  const set = get100KSetForZone(zoneNumber);
+  const east100k = getEastingFromChar(colLetter, set);
+  let north100k = getNorthingFromChar(rowLetter, set);
+  if (Number.isNaN(east100k)) return null;
+
+  const minNorthing = MIN_NORTHING_BY_BAND[zoneLetter] ?? 0;
+  while (north100k < minNorthing) north100k += 2000000;
+
+  const easting = east100k + parseInt(eDigits, 10) * scale;
+  const northing = north100k + parseInt(nDigits, 10) * scale;
+
+  const [lng, lat] = utmToLatLng(zoneNumber, zoneLetter, easting, northing);
+  if (Number.isNaN(lng) || Number.isNaN(lat)) return null;
+  return [lng, lat];
+}
+
 /**
  * Transverse Mercator WGS84 conversion algorithm
  */

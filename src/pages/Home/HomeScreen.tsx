@@ -1,16 +1,24 @@
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { User, Users, MapPin, UserCheck, Network, Server, ChevronRight, LogOut } from 'lucide-react';
 import { ROUTES } from '@/app/router/routes';
 import dtakLogo from '@/assets/dtak-logo.png';
 import { getAdminProfile } from '@/utils/adminProfile';
 import { MapView } from '@/components/map/MapView';
 import { useAuth } from '@/app/router/AppRouter';
+import type { MapShareItem } from '@/utils/mapShareParsing';
 import './HomeScreen.css';
+
+interface HomeLocationState {
+  focusItem?: MapShareItem;
+  focusSender?: string;
+}
 
 export function HomeScreen() {
   const navigate = useNavigate();
+  const location = useLocation();
   const { logout } = useAuth();
   const adminProfile = getAdminProfile();
+  const { focusItem, focusSender } = (location.state || {}) as HomeLocationState;
 
   return (
     <div className="home-layout">
@@ -131,7 +139,7 @@ export function HomeScreen() {
 
         {/* Map Container */}
         <section className="home-map-container">
-          <MapView />
+          <MapView focusItem={focusItem} focusSender={focusSender} />
         </section>
       </main>
     </div>

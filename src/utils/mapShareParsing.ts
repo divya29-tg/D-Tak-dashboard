@@ -3,8 +3,11 @@
  * alert/casevac/range-bearing/quickpic/location/sos) -- the same shapes
  * app.js's mobile counterpart writes as `content` on a chat message
  * (`gun.get('chats')/'groupChats'...set({sender, content, timestamp})`).
- * Each payload is discriminated by its own `_messageType` field.
+ * On the wire each payload is discriminated by a `"kind": "dtak.<type>.v1"`
+ * field (older/alternate producers may instead send `_messageType`, which
+ * is also honored below).
  */
+import { fromMGRS } from './mgrs';
 
 export type MapShareKind =
   | 'pin'
@@ -90,6 +93,64 @@ export interface MapShareItem {
   [key: string]: unknown;
 }
 
+/** Maps a wire `"kind"` value (e.g. "dtak.range_bearing.v1") to our internal MapShareKind. */
+const KIND_ALIASES: Record<string, MapShareKind> = {
+  rb: 'bearing', // real wire kind: "dtak.rb.v1"
+  rangebearing: 'bearing',
+  range_bearing: 'bearing',
+  photo: 'quickpic',
+};
+
+function resolveMessageKind(raw: Record<string, unknown>): MapShareKind | null {
+  const mt = raw._messageType;
+  if (typeof mt === 'string' && (KNOWN_KINDS as string[]).includes(mt)) {
+    return mt as MapShareKind;
+  }
+
+  const kindStr = raw.kind;
+  if (typeof kindStr === 'string') {
+    const token = kindStr.trim().toLowerCase().replace(/^dtak\./, '').replace(/\.v\d+$/, '');
+    if ((KNOWN_KINDS as string[]).includes(token)) return token as MapShareKind;
+    if (KIND_ALIASES[token]) return KIND_ALIASES[token];
+  }
+
+  return null;
+}
+
+/** Fills in numeric lng/lat pairs from MGRS text fields when a payload only carries MGRS. */
+function normalizeGeometry(item: MapShareItem): void {
+  if ((typeof item.lng !== 'number' || typeof item.lat !== 'number') && item.mgrs) {
+    const pt = fromMGRS(item.mgrs);
+    if (pt) {
+      item.lng = pt[0];
+      item.lat = pt[1];
+    }
+  }
+
+  if (item._messageType === 'bearing') {
+    if ((typeof item.originLng !== 'number' || typeof item.originLat !== 'number') && item.originMgrs) {
+      const pt = fromMGRS(item.originMgrs);
+      if (pt) {
+        item.originLng = pt[0];
+        item.originLat = pt[1];
+      }
+    }
+    if ((typeof item.destinationLng !== 'number' || typeof item.destinationLat !== 'number') && item.destinationMgrs) {
+      const pt = fromMGRS(item.destinationMgrs);
+      if (pt) {
+        item.destinationLng = pt[0];
+        item.destinationLat = pt[1];
+      }
+    }
+  }
+
+  if (item._messageType === 'geofence' && item.shape === 'CIRCLE' && !item.center) {
+    if (typeof item.lng === 'number' && typeof item.lat === 'number') {
+      item.center = [item.lng, item.lat];
+    }
+  }
+}
+
 export function parseMapShare(content: string): MapShareItem | null {
   if (!content || content[0] !== '{') return null;
   let parsed: unknown;
@@ -99,11 +160,14 @@ export function parseMapShare(content: string): MapShareItem | null {
     return null;
   }
   if (!parsed || typeof parsed !== 'object') return null;
-  const mt = (parsed as Record<string, unknown>)._messageType;
-  if (typeof mt === 'string' && (KNOWN_KINDS as string[]).includes(mt)) {
-    return parsed as MapShareItem;
-  }
-  return null;
+
+  const raw = parsed as Record<string, unknown>;
+  const kind = resolveMessageKind(raw);
+  if (!kind) return null;
+
+  const item = { ...raw, _messageType: kind } as MapShareItem;
+  normalizeGeometry(item);
+  return item;
 }
 
 /** Whether an item carries coordinates that can actually be placed on a map. */
@@ -145,4 +209,21 @@ export function mapShareLabel(item: MapShareItem): string {
 
 export function mapShareKindLabel(kind: MapShareKind): string {
   return KIND_LABELS[kind];
+}
+
+const KIND_BADGES: Record<MapShareKind, string> = {
+  pin: 'PIN',
+  route: 'ROUTE',
+  geofence: 'GEO FENCE',
+  alert: 'ALERT',
+  casevac: 'CASEVAC',
+  bearing: 'BEARING',
+  quickpic: 'QUICK PIC',
+  location: 'LOCATION',
+  sos: 'SOS',
+};
+
+/** Short, all-caps badge text for the chat card header (e.g. "GEO FENCE"). */
+export function mapShareKindBadge(kind: MapShareKind): string {
+  return KIND_BADGES[kind];
 }

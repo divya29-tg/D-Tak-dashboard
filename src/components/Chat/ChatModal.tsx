@@ -119,9 +119,10 @@ export function ChatModal({ isOpen, onClose, mode, targetId, targetName }: ChatM
                     ) : mapShare ? (
                       <ChatMapShareMessage
                         item={mapShare}
-                        onView={() =>
-                          navigate(ROUTES.SHARED_MAP, { state: { item: mapShare, sender: msg.sender } })
-                        }
+                        onView={() => {
+                          onClose();
+                          navigate(ROUTES.HOME, { state: { focusItem: mapShare, focusSender: msg.sender } });
+                        }}
                       />
                     ) : unknownJson ? (
                       <ChatUnknownAttachment data={unknownJson} />
