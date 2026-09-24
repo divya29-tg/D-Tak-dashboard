@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Search, User, Users, MapPin, UserCheck, Network, Server, ChevronRight, LogOut, Check, X, Loader2 } from 'lucide-react';
+import { Search, User, Users, MapPin, UserCheck, Server, ChevronRight, LogOut, Check, X, Loader2 } from 'lucide-react';
 import { ROUTES } from '@/app/router/routes';
 import dtakLogo from '@/assets/dtak-logo.png';
 import { gunService } from '@/services/gunService';
@@ -153,10 +153,6 @@ export function ContactRequestsScreen() {
             {pendingCount > 0 && <span className="creq-sidebar__nav-badge">{pendingCount}</span>}
           </div>
 
-          <div className="creq-sidebar__nav-item" onClick={() => navigate(ROUTES.EDGE_NODES)}>
-            <Network size={18} className="creq-sidebar__nav-icon" />
-            <span>EDGE NODE</span>
-          </div>
 
           <div className="creq-sidebar__nav-item" onClick={() => navigate(ROUTES.NCC)}>
             <Server size={18} className="creq-sidebar__nav-icon" />

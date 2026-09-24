@@ -1,5 +1,5 @@
 import { useLocation, useNavigate } from 'react-router-dom';
-import { ArrowLeft, User, Users, MapPin, UserCheck, Network, Server, ChevronRight, LogOut, MapPinOff } from 'lucide-react';
+import { ArrowLeft, User, Users, MapPin, UserCheck, Server, ChevronRight, LogOut, MapPinOff } from 'lucide-react';
 import { ROUTES } from '@/app/router/routes';
 import dtakLogo from '@/assets/dtak-logo.png';
 import { getAdminProfile } from '@/utils/adminProfile';
@@ -51,10 +51,6 @@ export function SharedMapScreen() {
           <div className="smap-sidebar__nav-item" onClick={() => navigate(ROUTES.CONTACT_REQUESTS)}>
             <UserCheck size={18} />
             <span>REQUESTS</span>
-          </div>
-          <div className="smap-sidebar__nav-item" onClick={() => navigate(ROUTES.EDGE_NODES)}>
-            <Network size={18} />
-            <span>EDGE NODE</span>
           </div>
           <div className="smap-sidebar__nav-item" onClick={() => navigate(ROUTES.NCC)}>
             <Server size={18} />

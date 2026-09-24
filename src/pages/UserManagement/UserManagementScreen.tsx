@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { PenLine, Ban, Lock, Search, Plus, User, Users, MapPin, UserCheck, Network, Server, ChevronRight, LogOut, Loader2, AlertCircle, MessageSquare, ShieldCheck } from 'lucide-react';
+import { PenLine, Ban, Lock, Search, Plus, User, Users, MapPin, UserCheck, Server, ChevronRight, LogOut, Loader2, AlertCircle, MessageSquare, ShieldCheck } from 'lucide-react';
 import { ROUTES } from '@/app/router/routes';
 import dtakLogo from '@/assets/dtak-logo.png';
 import { userService } from '@/services/api/users';
@@ -353,13 +353,6 @@ export function UserManagementScreen() {
             <span>REQUESTS</span>
           </div>
 
-          <div
-            className="sidebar__nav-item"
-            onClick={() => navigate(ROUTES.EDGE_NODES)}
-          >
-            <Network size={18} className="sidebar__nav-icon" />
-            <span>EDGE NODE</span>
-          </div>
 
           <div
             className="sidebar__nav-item"

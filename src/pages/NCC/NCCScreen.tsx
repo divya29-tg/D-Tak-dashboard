@@ -1,11 +1,10 @@
-import { useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   User,
   Users,
   MapPin,
   UserCheck,
-  Network,
   Server,
   ChevronRight,
   LogOut,
@@ -20,87 +19,30 @@ import {
   Copy,
   TrendingUp,
   Clock,
-  Radio,
   ArrowUpRight,
   Boxes,
   Globe,
 } from 'lucide-react';
 import { ROUTES } from '@/app/router/routes';
 import dtakLogo from '@/assets/dtak-logo.png';
+import trustgridLogo from '@/assets/trustgrid-logo.png';
 import { getAdminProfile } from '@/utils/adminProfile';
 import { useAuth } from '@/app/router/AppRouter';
+import { nccService, type NccDateCount, type NccKpiCounts, type NccLedgerTx, type NccNetworkStatus, type NccPoolNode, type NccServiceLifecycle } from '@/services/api/ncc';
 import './NCCScreen.css';
 
 type RangeMode = 'daily' | 'weekly' | 'monthly';
 
-const HOLDER_DATASETS: Record<RangeMode, { labels: string[]; values: number[] }> = {
-  daily: {
-    labels: ['9/1', '9/2', '9/3', '9/4', '9/5', '9/6', '9/7', '9/8', '9/9', '9/10', '9/11', '9/12', '9/13', '9/14'],
-    values: [44, 45, 45, 46, 47, 47, 48, 48, 49, 49, 50, 50, 51, 52],
-  },
-  weekly: {
-    labels: ['Wk 29', 'Wk 30', 'Wk 31', 'Wk 32', 'Wk 33', 'Wk 34', 'Wk 35', 'Wk 36'],
-    values: [31, 34, 36, 38, 41, 44, 47, 50],
-  },
-  monthly: {
-    labels: ['Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sept'],
-    values: [18, 24, 29, 35, 42, 51],
-  },
+const EMPTY_KPI_COUNTS: NccKpiCounts = {
+  transactions: null,
+  services: null,
+  claimDefinitions: null,
+  schemas: null,
+  issuers: null,
+  verifiers: null,
 };
 
-const SERVICE_DATASETS: Record<RangeMode, { labels: string[]; created: number[]; published: number[] }> = {
-  daily: {
-    labels: ['9/8', '9/9', '9/10', '9/11', '9/12', '9/13', '9/14'],
-    created: [3, 2, 4, 1, 3, 2, 4],
-    published: [2, 2, 3, 1, 2, 2, 3],
-  },
-  weekly: {
-    labels: ['Wk 31', 'Wk 32', 'Wk 33', 'Wk 34', 'Wk 35', 'Wk 36'],
-    created: [9, 11, 8, 14, 12, 16],
-    published: [7, 9, 8, 11, 10, 13],
-  },
-  monthly: {
-    labels: ['Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sept'],
-    created: [22, 28, 31, 35, 40, 46],
-    published: [18, 23, 27, 30, 34, 39],
-  },
-};
-
-const CREDENTIAL_DATASETS: Record<RangeMode, { labels: string[]; values: number[] }> = {
-  daily: {
-    labels: HOLDER_DATASETS.daily.labels,
-    values: [8, 10, 6, 12, 9, 14, 11, 13, 10, 15, 12, 16, 14, 18],
-  },
-  weekly: {
-    labels: HOLDER_DATASETS.weekly.labels,
-    values: [28, 34, 31, 40, 37, 45, 42, 50],
-  },
-  monthly: {
-    labels: HOLDER_DATASETS.monthly.labels,
-    values: [24, 31, 29, 38, 42, 48],
-  },
-};
-
-const TXN_RANGE_OPTIONS = ['24H', '7D', '30D', '3M', '1Y'] as const;
-type TxnRange = (typeof TXN_RANGE_OPTIONS)[number];
-
-const TRANSACTION_DATASETS: Record<TxnRange, { labels: string[]; values: number[] }> = {
-  '24H': { labels: ['00:00', '04:00', '08:00', '12:00', '16:00', '20:00', '23:59'], values: [12, 18, 34, 52, 61, 48, 29] },
-  '7D': { labels: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'], values: [38, 45, 52, 66, 58, 41, 36] },
-  '30D': { labels: ['Wk 1', 'Wk 2', 'Wk 3', 'Wk 4'], values: [186, 214, 248, 266] },
-  '3M': { labels: ['Jul', 'Aug', 'Sept'], values: [820, 910, 1040] },
-  '1Y': {
-    labels: ['Oct', 'Nov', 'Dec', 'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sept'],
-    values: [140, 165, 190, 210, 225, 248, 265, 280, 301, 320, 340, 362],
-  },
-};
-
-const TRANSACTIONS_TOTAL = 2944;
-const SERVICES_CREATED_TOTAL = 168;
-const CLAIM_DEFS_TOTAL = 261;
-const SCHEMAS_TOTAL = 259;
-const ISSUERS_TOTAL = 10;
-const VERIFIERS_TOTAL = 1;
+const formatCount = (n: number | null) => (n === null ? '—' : n.toLocaleString());
 
 // DTAK design-token colors (see the --ncc-* CSS variables in NCCScreen.css).
 const NCC_GREEN = '#8fbf3f';
@@ -112,65 +54,72 @@ const NCC_RED = '#e5484d';
 const NCC_TEXT_SECONDARY = '#9ca3af';
 const NCC_TEXT_TERTIARY = '#6b7280';
 
+const NCC_EXPLORER_URL = (import.meta.env.VITE_NCC_EXPLORER_URL || 'https://explorer.staging.trustgrid.com').replace(/\/$/, '');
+const NCC_EXPLORER_LEDGER = import.meta.env.VITE_NCC_EXPLORER_LEDGER || 'TrustGridDev';
+const NCC_EXPLORER_HOME_URL = `${NCC_EXPLORER_URL}/home/${NCC_EXPLORER_LEDGER}`;
+
+/** Explorer domain-ledger tx list, optionally filtered to the given tx type names (e.g. SCHEMA). */
+const explorerTxsUrl = (txNames: string[] = []) =>
+  `${NCC_EXPLORER_URL}/txs/${NCC_EXPLORER_LEDGER}/domain?${new URLSearchParams({
+    page: '1',
+    pageSize: '50',
+    filterTxNames: JSON.stringify(txNames),
+    sortFromRecent: 'true',
+  })}`;
+
 const STAT_CARDS = [
-  { icon: Share2, value: TRANSACTIONS_TOTAL, label: 'Transactions', trend: '18%', color: NCC_GREEN, bg: 'rgba(143, 191, 63, 0.14)', spark: [12, 15, 14, 18, 22, 20, 25, 28, 26, 31] },
-  { icon: Building2, value: SERVICES_CREATED_TOTAL, label: 'Services', trend: '8%', color: NCC_PURPLE, bg: 'rgba(167, 139, 250, 0.14)', spark: [20, 22, 21, 24, 23, 26, 28, 27, 30, 32] },
-  { icon: ClipboardList, value: CLAIM_DEFS_TOTAL, label: 'Claim Definitions', trend: '6%', color: NCC_AMBER, bg: 'rgba(242, 169, 59, 0.14)', spark: [30, 29, 31, 33, 32, 35, 34, 37, 39, 38] },
-  { icon: FileText, value: SCHEMAS_TOTAL, label: 'Schemas', trend: '4%', color: NCC_MUTED_GREEN, bg: 'rgba(107, 143, 112, 0.16)', spark: [40, 41, 40, 42, 44, 43, 45, 46, 45, 47] },
-  { icon: ShieldCheck, value: ISSUERS_TOTAL, label: 'Issuers', trend: '7%', color: NCC_BLUE, bg: 'rgba(59, 130, 246, 0.14)', spark: [4, 5, 5, 6, 6, 7, 8, 8, 9, 10] },
-  { icon: UserCheck, value: VERIFIERS_TOTAL, label: 'Verifier', trend: null, color: NCC_TEXT_SECONDARY, bg: 'rgba(156, 163, 175, 0.12)', spark: [1, 1, 1, 1, 1, 1, 1, 1, 1, 1] },
+  { icon: Share2, key: 'transactions' as const, explorerUrl: explorerTxsUrl(), label: 'Transactions', trend: '18%', color: NCC_GREEN, bg: 'rgba(143, 191, 63, 0.14)', spark: [12, 15, 14, 18, 22, 20, 25, 28, 26, 31] },
+  { icon: Building2, key: 'services' as const, explorerUrl: null, label: 'Services', trend: '8%', color: NCC_PURPLE, bg: 'rgba(167, 139, 250, 0.14)', spark: [20, 22, 21, 24, 23, 26, 28, 27, 30, 32] },
+  { icon: ClipboardList, key: 'claimDefinitions' as const, explorerUrl: explorerTxsUrl(['CLAIM_DEF']), label: 'Claim Definitions', trend: '6%', color: NCC_AMBER, bg: 'rgba(242, 169, 59, 0.14)', spark: [30, 29, 31, 33, 32, 35, 34, 37, 39, 38] },
+  { icon: FileText, key: 'schemas' as const, explorerUrl: explorerTxsUrl(['SCHEMA']), label: 'Schemas', trend: '4%', color: NCC_MUTED_GREEN, bg: 'rgba(107, 143, 112, 0.16)', spark: [40, 41, 40, 42, 44, 43, 45, 46, 45, 47] },
+  { icon: ShieldCheck, key: 'issuers' as const, explorerUrl: null, label: 'Issuers', trend: '7%', color: NCC_BLUE, bg: 'rgba(59, 130, 246, 0.14)', spark: [4, 5, 5, 6, 6, 7, 8, 8, 9, 10] },
+  { icon: UserCheck, key: 'verifiers' as const, explorerUrl: null, label: 'Verifier', trend: null, color: NCC_TEXT_SECONDARY, bg: 'rgba(156, 163, 175, 0.12)', spark: [1, 1, 1, 1, 1, 1, 1, 1, 1, 1] },
 ];
 
-const DISTRIBUTION_SEGMENTS = [
-  { label: 'NYM', value: 42, color: NCC_GREEN },
-  { label: 'Schema', value: 28, color: NCC_PURPLE },
-  { label: 'Credential', value: 21, color: NCC_MUTED_GREEN },
-  { label: 'Claim Definition', value: 6, color: NCC_AMBER },
-  { label: 'Revocation', value: 2, color: NCC_RED },
-  { label: 'Other', value: 1, color: NCC_TEXT_TERTIARY },
-];
+type NodeStatus = 'Operational' | 'Offline' | 'Unknown';
 
-interface NodeInfo {
-  alias: string;
-  port: number;
-  nodeIp: string;
-  service: string;
-  did: string;
-  uptime: string;
-  status: 'Operational' | 'Offline';
+interface NodeInfo extends NccPoolNode {
+  uptimeSecs: number | null;
+  status: NodeStatus;
 }
 
-// The full mesh is 26 nodes (matches the Edge Node network); the topology
-// panel visualizes a representative sample rather than all 26 at once.
-const NODES_TOTAL = 26;
-const NODES_ONLINE = 15;
-
-const NODES: NodeInfo[] = [
-  { alias: 'Node1', port: 9701, nodeIp: '10.160.0.8', service: 'VALIDATOR', did: 'Gk3nWpXtRVYcPiab9s2Q', uptime: '482 days, 2 hours', status: 'Operational' },
-  { alias: 'Node2', port: 9703, nodeIp: '10.160.0.8', service: 'VALIDATOR', did: 'EbP4aYNeTHL6q385GuVR', uptime: '482 days, 2 hours', status: 'Operational' },
-  { alias: 'Node3', port: 9705, nodeIp: '10.160.0.8', service: 'VALIDATOR', did: '4cU41vWW82ArfxJXHkzP', uptime: '482 days, 2 hours', status: 'Operational' },
-  { alias: 'Node4', port: 9707, nodeIp: '10.160.0.8', service: 'VALIDATOR', did: 'TWwCRQRZ2ZHMJFn9TzLp', uptime: '482 days, 2 hours', status: 'Offline' },
-  { alias: 'Node5', port: 9709, nodeIp: '10.160.0.9', service: 'VALIDATOR', did: 'Qp82fWzNc6bLXtR9VkAe', uptime: '340 days, 6 hours', status: 'Operational' },
-  { alias: 'Node6', port: 9711, nodeIp: '10.160.0.9', service: 'OBSERVER', did: 'Nx4uHmYcTz18qBpLwR7v', uptime: '340 days, 6 hours', status: 'Operational' },
-  { alias: 'Node7', port: 9713, nodeIp: '10.160.0.9', service: 'OBSERVER', did: 'Rj93kSpXhQ6cVtY2mLbN', uptime: '198 days, 11 hours', status: 'Offline' },
-  { alias: 'Node8', port: 9715, nodeIp: '10.160.0.10', service: 'VALIDATOR', did: 'Wv7dGpMzXc3fRhT8nKjQ', uptime: '198 days, 11 hours', status: 'Operational' },
-];
-
-interface LedgerRow {
-  seq: number;
-  type: string;
-  color: string;
-  txnId: string;
-  time: string;
+/** Pool-ledger nodes joined with validator-info: reachable → Operational. */
+function buildNodes(pool: NccPoolNode[], network: NccNetworkStatus | null): NodeInfo[] {
+  const reachable = new Set(network?.reachable ?? []);
+  return pool.map((node) => ({
+    ...node,
+    uptimeSecs: network?.validators.find((v) => v.name === node.alias)?.uptimeSecs ?? null,
+    status: !network ? 'Unknown' : reachable.has(node.alias) ? 'Operational' : 'Offline',
+  }));
 }
 
-const RECENT_LEDGER: LedgerRow[] = [
-  { seq: 2944, type: 'NYM', color: NCC_GREEN, txnId: 'e935fela260497524e1195c9b7f18716aecbb4ea9b...', time: '25 mins ago' },
-  { seq: 2943, type: 'Schema', color: NCC_PURPLE, txnId: '3f21a8e99d4c7b2e6f0a9d114b8c1d2f7a8e92...', time: '1 hour ago' },
-  { seq: 2942, type: 'Credential', color: NCC_MUTED_GREEN, txnId: '82bd4f6e1a7c93d2e5f8a1b4dc3d7e9f31c21...', time: '2 hours ago' },
-  { seq: 2941, type: 'Claim Def', color: NCC_AMBER, txnId: '17aa9b3d4e6c21f5a8b7d9e0f4c3b8a1d4c12...', time: '3 hours ago' },
-  { seq: 2940, type: 'Revocation', color: NCC_RED, txnId: '9c4d7e2a1f8b6d3c5e2a9f7b3d1c8e4a2b7f31...', time: '5 hours ago' },
-];
+/** "492 days, 4 hours" from a number of seconds. */
+function formatUptime(secs: number | null) {
+  if (secs === null) return '—';
+  const plural = (n: number, unit: string) => `${n} ${unit}${n === 1 ? '' : 's'}`;
+  const days = Math.floor(secs / 86_400);
+  const hours = Math.floor((secs % 86_400) / 3_600);
+  if (days > 0) return `${plural(days, 'day')}, ${plural(hours, 'hour')}`;
+  return `${plural(hours, 'hour')}, ${plural(Math.floor((secs % 3_600) / 60), 'min')}`;
+}
+
+// Topology is a 3x3 grid with the DTAK hub in cell 4; nodes fill the ring
+// cells, using the top/left/right/bottom cross first when there are few.
+const TOPOLOGY_HUB_CELL = 4;
+const TOPOLOGY_CROSS_CELLS = [1, 3, 5, 7];
+const TOPOLOGY_RING_CELLS = [0, 1, 2, 3, 5, 6, 7, 8];
+const TOPOLOGY_MAX_NODES = TOPOLOGY_RING_CELLS.length;
+
+function topologyCells(nodes: NodeInfo[]): (NodeInfo | 'hub' | null)[] {
+  const shown = nodes.slice(0, TOPOLOGY_MAX_NODES);
+  const slots = shown.length <= TOPOLOGY_CROSS_CELLS.length ? TOPOLOGY_CROSS_CELLS : TOPOLOGY_RING_CELLS;
+  const cells: (NodeInfo | 'hub' | null)[] = Array.from({ length: 9 }, () => null);
+  cells[TOPOLOGY_HUB_CELL] = 'hub';
+  shown.forEach((node, i) => {
+    cells[slots[i]] = node;
+  });
+  return cells;
+}
 
 const CHART_W = 720;
 const CHART_H = 240;
@@ -189,6 +138,129 @@ function niceGrid(maxRaw: number): number[] {
  * showing the same fixed all-time total. */
 function sumOf(values: number[]): number {
   return values.reduce((a, b) => a + b, 0);
+}
+
+// Network Adoption, Credential Activity + Service Lifecycle: fetch daily counts once over a long
+// range and bucket them client-side, so Daily/Weekly/Monthly share one request.
+const NCC_HISTORY_START_DATE = '2024-12-01';
+const HOLDER_WINDOW: Record<RangeMode, number> = { daily: 14, weekly: 8, monthly: 6 };
+const SERVICE_WINDOW: Record<RangeMode, number> = { daily: 7, weekly: 6, monthly: 6 };
+const CREDENTIAL_WINDOW: Record<RangeMode, number> = { daily: 14, weekly: 8, monthly: 6 };
+
+const toIsoDate = (d: Date) => d.toISOString().slice(0, 10);
+
+/** UTC start of the i-th bucket back from the one containing `today` (day, Monday-start week, or month). */
+function bucketStart(today: Date, mode: RangeMode, stepsBack: number): Date {
+  const y = today.getUTCFullYear();
+  const m = today.getUTCMonth();
+  const d = today.getUTCDate();
+  if (mode === 'monthly') return new Date(Date.UTC(y, m - stepsBack, 1));
+  if (mode === 'weekly') return new Date(Date.UTC(y, m, d - ((today.getUTCDay() + 6) % 7) - stepsBack * 7));
+  return new Date(Date.UTC(y, m, d - stepsBack));
+}
+
+/** The last `size` buckets ending with the one containing `today`, as ISO start/end dates plus axis labels. */
+function buildBuckets(mode: RangeMode, today: Date, size: number) {
+  const starts = Array.from({ length: size + 1 }, (_, i) => bucketStart(today, mode, size - 1 - i));
+  return starts.slice(0, size).map((s, i) => ({
+    start: toIsoDate(s),
+    end: toIsoDate(starts[i + 1]),
+    label:
+      mode === 'monthly'
+        ? s.toLocaleString('en-US', { month: 'short', timeZone: 'UTC' })
+        : `${s.getUTCMonth() + 1}/${s.getUTCDate()}`,
+  }));
+}
+
+const countInRange = (rows: NccDateCount[], from: string | null, to: string) =>
+  sumOf(rows.filter((r) => (from === null || r.date >= from) && r.date < to).map((r) => r.count));
+
+/** Cumulative holder total at the end of each bucket. */
+function buildHolderSeries(daily: NccDateCount[], mode: RangeMode, today: Date) {
+  const buckets = buildBuckets(mode, today, HOLDER_WINDOW[mode]);
+  return { labels: buckets.map((b) => b.label), values: buckets.map((b) => countInRange(daily, null, b.end)) };
+}
+
+/** Credentials issued within each bucket. */
+function buildCredentialSeries(daily: NccDateCount[], mode: RangeMode, today: Date) {
+  const buckets = buildBuckets(mode, today, CREDENTIAL_WINDOW[mode]);
+  return { labels: buckets.map((b) => b.label), values: buckets.map((b) => countInRange(daily, b.start, b.end)) };
+}
+
+/** Services created / published within each bucket. */
+function buildServiceSeries(lifecycle: NccServiceLifecycle, mode: RangeMode, today: Date) {
+  const buckets = buildBuckets(mode, today, SERVICE_WINDOW[mode]);
+  return {
+    labels: buckets.map((b) => b.label),
+    created: buckets.map((b) => countInRange(lifecycle.created, b.start, b.end)),
+    published: buckets.map((b) => countInRange(lifecycle.published, b.start, b.end)),
+  };
+}
+
+
+// Display label + color per ledger typeName; anything unlisted falls under "Other".
+const TXN_TYPE_META: Record<string, { label: string; color: string }> = {
+  NYM: { label: 'NYM', color: NCC_GREEN },
+  SCHEMA: { label: 'Schema', color: NCC_PURPLE },
+  CLAIM_DEF: { label: 'Claim Definition', color: NCC_AMBER },
+  ATTRIB: { label: 'Attribute', color: NCC_MUTED_GREEN },
+  REVOC_REG_DEF: { label: 'Revocation Registry', color: NCC_RED },
+  REVOC_REG_ENTRY: { label: 'Revocation Entry', color: NCC_RED },
+};
+const txnTypeMeta = (type: string) => TXN_TYPE_META[type] ?? { label: type, color: NCC_TEXT_TERTIARY };
+
+/** Segment per transaction type, largest first. */
+function buildDistribution(txs: NccLedgerTx[]) {
+  const counts = new Map<string, number>();
+  txs.forEach((t) => counts.set(t.type, (counts.get(t.type) ?? 0) + 1));
+  return [...counts.entries()]
+    .sort((a, b) => b[1] - a[1])
+    .map(([type, value]) => ({ ...txnTypeMeta(type), value }));
+}
+
+const TXN_ACTIVITY_HOURS = 24;
+const TXN_ACTIVITY_BUCKET_HOURS = 2;
+const HOUR_MS = 3_600_000;
+
+/** Transactions per 2-hour bucket over the last 24 hours, ending at the current hour. */
+function buildTxnActivity(txs: NccLedgerTx[], now: Date) {
+  const end = Math.ceil(now.getTime() / HOUR_MS) * HOUR_MS;
+  const size = TXN_ACTIVITY_HOURS / TXN_ACTIVITY_BUCKET_HOURS;
+  const starts = Array.from({ length: size }, (_, i) => end - (size - i) * TXN_ACTIVITY_BUCKET_HOURS * HOUR_MS);
+  const values = starts.map((start) => {
+    const stop = start + TXN_ACTIVITY_BUCKET_HOURS * HOUR_MS;
+    return txs.filter((t) => {
+      const time = Date.parse(t.txnTime);
+      return time >= start && time < stop;
+    }).length;
+  });
+  const labels = starts.map((start) => {
+    const d = new Date(start);
+    return `${String(d.getHours()).padStart(2, '0')}:00`;
+  });
+  // The API only returns the latest 50 txs, so if the oldest one is inside the
+  // window, earlier buckets may be missing transactions.
+  const oldest = txs[txs.length - 1];
+  const complete = !oldest || Date.parse(oldest.txnTime) < starts[0];
+  return { labels, values, complete };
+}
+
+const pad2 = (n: number) => String(n).padStart(2, '0');
+const formatTxnDate = (iso: string) => {
+  const d = new Date(iso);
+  return `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())} ${pad2(d.getHours())}:${pad2(d.getMinutes())}:${pad2(d.getSeconds())}`;
+};
+
+/** "25 mins, 16 secs ago" style relative time. */
+function formatTimeAgo(iso: string, now: number, withSeconds = false) {
+  const secs = Math.max(0, Math.floor((now - Date.parse(iso)) / 1000));
+  const plural = (n: number, unit: string) => `${n} ${unit}${n === 1 ? '' : 's'}`;
+  if (secs < 60) return `${plural(secs, 'sec')} ago`;
+  const mins = Math.floor(secs / 60);
+  if (mins < 60) return withSeconds ? `${plural(mins, 'min')}, ${plural(secs % 60, 'sec')} ago` : `${plural(mins, 'min')} ago`;
+  const hours = Math.floor(mins / 60);
+  if (hours < 24) return withSeconds ? `${plural(hours, 'hour')}, ${plural(mins % 60, 'min')} ago` : `${plural(hours, 'hour')} ago`;
+  return `${plural(Math.floor(hours / 24), 'day')} ago`;
 }
 
 /** % change from the first to the last point in the selected period. */
@@ -595,25 +667,101 @@ export function NCCScreen() {
   const { logout } = useAuth();
   const adminProfile = getAdminProfile();
 
-  const [txnRange, setTxnRange] = useState<TxnRange>('7D');
   const [holderRange, setHolderRange] = useState<RangeMode>('monthly');
   const [serviceRange, setServiceRange] = useState<RangeMode>('weekly');
   const [credentialRange, setCredentialRange] = useState<RangeMode>('weekly');
   const [environment, setEnvironment] = useState('Staging');
   const [copied, setCopied] = useState(false);
+  const [kpiCounts, setKpiCounts] = useState<NccKpiCounts>(EMPTY_KPI_COUNTS);
+  const [holderDaily, setHolderDaily] = useState<NccDateCount[] | null>(null);
+  const [serviceLifecycle, setServiceLifecycle] = useState<NccServiceLifecycle | null>(null);
+  const [credentialDaily, setCredentialDaily] = useState<NccDateCount[] | null>(null);
+  const [ledgerTxs, setLedgerTxs] = useState<NccLedgerTx[] | null>(null);
+  const [poolNodes, setPoolNodes] = useState<NccPoolNode[] | null>(null);
+  const [networkStatus, setNetworkStatus] = useState<NccNetworkStatus | null>(null);
+  const [now, setNow] = useState(() => Date.now());
 
-  const txnData = TRANSACTION_DATASETS[txnRange];
-  const holderData = HOLDER_DATASETS[holderRange];
-  const serviceData = SERVICE_DATASETS[serviceRange];
-  const credentialData = CREDENTIAL_DATASETS[credentialRange];
+  useEffect(() => {
+    let cancelled = false;
+    nccService.getKpiCounts().then((counts) => {
+      if (!cancelled) setKpiCounts(counts);
+    });
+    nccService
+      .getHolderCounts(NCC_HISTORY_START_DATE, toIsoDate(new Date()), 'day')
+      .then((rows) => {
+        if (!cancelled) setHolderDaily(rows);
+      })
+      .catch((err) => console.error('Failed to load holder counts', err));
+    nccService
+      .getServiceLifecycleCounts(NCC_HISTORY_START_DATE, toIsoDate(new Date()), 'day')
+      .then((lifecycle) => {
+        if (!cancelled) setServiceLifecycle(lifecycle);
+      })
+      .catch((err) => console.error('Failed to load service lifecycle counts', err));
+    nccService
+      .getIssuedCredentialCounts(NCC_HISTORY_START_DATE, toIsoDate(new Date()), 'day')
+      .then((rows) => {
+        if (!cancelled) setCredentialDaily(rows);
+      })
+      .catch((err) => console.error('Failed to load issued credential counts', err));
+    nccService
+      .getDomainTxs()
+      .then((txs) => {
+        if (!cancelled) setLedgerTxs(txs);
+      })
+      .catch((err) => console.error('Failed to load domain transactions', err));
+    nccService
+      .getPoolNodes()
+      .then((nodes) => {
+        if (!cancelled) setPoolNodes(nodes);
+      })
+      .catch((err) => console.error('Failed to load pool nodes', err));
+    nccService
+      .getNetworkStatus()
+      .then((status) => {
+        if (!cancelled) setNetworkStatus(status);
+      })
+      .catch((err) => console.error('Failed to load network status', err));
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
-  const txnId = 'f7a2c9e1b4d8365af0219cbe7a44d902e5f8c1b3a6d740fe982c1b5a03df66c';
+  // Keeps the "time ago" labels current.
+  useEffect(() => {
+    const id = setInterval(() => setNow(Date.now()), 1000);
+    return () => clearInterval(id);
+  }, []);
+
+  const txnData = useMemo(() => buildTxnActivity(ledgerTxs ?? [], new Date()), [ledgerTxs]);
+  const distribution = useMemo(() => buildDistribution(ledgerTxs ?? []), [ledgerTxs]);
+  const lastTxn = ledgerTxs?.[0] ?? null;
+
+  const nodes = useMemo(() => buildNodes(poolNodes ?? [], networkStatus), [poolNodes, networkStatus]);
+  const nodesOnline = nodes.filter((n) => n.status === 'Operational').length;
+  const nodesLabel = poolNodes && networkStatus ? `${nodesOnline} / ${nodes.length}` : poolNodes ? `— / ${nodes.length}` : '—';
+  const allNodesUp = poolNodes !== null && networkStatus !== null && nodesOnline === nodes.length;
+  const networkUptimeSecs = networkStatus?.validators.length
+    ? Math.max(...networkStatus.validators.map((v) => v.uptimeSecs ?? 0))
+    : null;
+  const topology = topologyCells(nodes);
+  const holderData = useMemo(
+    () => buildHolderSeries(holderDaily ?? [], holderRange, new Date()),
+    [holderDaily, holderRange]
+  );
+  const serviceData = useMemo(
+    () => buildServiceSeries(serviceLifecycle ?? { created: [], published: [] }, serviceRange, new Date()),
+    [serviceLifecycle, serviceRange]
+  );
+  const credentialData = useMemo(
+    () => buildCredentialSeries(credentialDaily ?? [], credentialRange, new Date()),
+    [credentialDaily, credentialRange]
+  );
 
   // Headline totals + trends recomputed per panel from whichever range is
   // currently selected there, so switching Daily/Weekly/Monthly (or
   // 24H/7D/30D/3M/1Y) visibly changes more than just the chart shape.
   const txnPeriodTotal = useMemo(() => sumOf(txnData.values), [txnData]);
-  const txnPeriodTrend = useMemo(() => trendOf(txnData.values), [txnData]);
 
   const totalHolders = holderData.values[holderData.values.length - 1];
   const holderTrend = useMemo(() => trendOf(holderData.values), [holderData]);
@@ -641,8 +789,9 @@ export function NCCScreen() {
   }, [credentialData]);
 
   const handleCopyTxn = async () => {
+    if (!lastTxn) return;
     try {
-      await navigator.clipboard.writeText(txnId);
+      await navigator.clipboard.writeText(lastTxn.txnId);
       setCopied(true);
       setTimeout(() => setCopied(false), 1500);
     } catch {
@@ -685,10 +834,6 @@ export function NCCScreen() {
             <span>REQUESTS</span>
           </div>
 
-          <div className="ncc-sidebar__nav-item" onClick={() => navigate(ROUTES.EDGE_NODES)}>
-            <Network size={18} className="ncc-sidebar__nav-icon" />
-            <span>EDGE NODE</span>
-          </div>
 
           <div className="ncc-sidebar__nav-item ncc-sidebar__nav-item--active" onClick={() => navigate(ROUTES.NCC)}>
             <div className="ncc-sidebar__active-indicator" />
@@ -741,25 +886,31 @@ export function NCCScreen() {
               <h1 className="ncc-banner__title">Gamma Consortium Network</h1>
               <div className="ncc-banner__status">
                 <span className="ncc-banner__status-dot" />
-                Operational
+                {!networkStatus ? 'Checking…' : allNodesUp ? 'Operational' : 'Degraded'}
               </div>
-              <p className="ncc-banner__desc">All network nodes are responding normally.</p>
+              <p className="ncc-banner__desc">
+                {!networkStatus || !poolNodes
+                  ? 'Checking network node status…'
+                  : allNodesUp
+                    ? 'All network nodes are responding normally.'
+                    : `${nodes.length - nodesOnline} of ${nodes.length} nodes are not reachable.`}
+              </p>
 
               <div className="ncc-banner__metrics">
                 <div className="ncc-banner__metric">
-                  <div className="ncc-banner__metric-value">{NODES_ONLINE} / {NODES_TOTAL}</div>
+                  <div className="ncc-banner__metric-value">{nodesLabel}</div>
                   <div className="ncc-banner__metric-label">Nodes Online</div>
                 </div>
                 <div className="ncc-banner__metric">
-                  <div className="ncc-banner__metric-value">{NODES[0].uptime}</div>
+                  <div className="ncc-banner__metric-value">{formatUptime(networkUptimeSecs)}</div>
                   <div className="ncc-banner__metric-label">Network Uptime</div>
                 </div>
                 <div className="ncc-banner__metric">
-                  <div className="ncc-banner__metric-value">#{TRANSACTIONS_TOTAL}</div>
+                  <div className="ncc-banner__metric-value">#{lastTxn ? lastTxn.seqNo : formatCount(kpiCounts.transactions)}</div>
                   <div className="ncc-banner__metric-label">Latest Transaction</div>
                 </div>
                 <div className="ncc-banner__metric">
-                  <div className="ncc-banner__metric-value">25 mins ago</div>
+                  <div className="ncc-banner__metric-value">{lastTxn ? formatTimeAgo(lastTxn.txnTime, now) : '—'}</div>
                   <div className="ncc-banner__metric-label">Last Activity</div>
                 </div>
               </div>
@@ -778,14 +929,14 @@ export function NCCScreen() {
                 </select>
               </div>
 
-              <div className="ncc-banner__activity">
-                <span className="ncc-banner__activity-label">Live Network Activity</span>
-                <Sparkline values={[18, 22, 19, 26, 24, 30, 27, 33, 29, 35, 31, 38]} color={NCC_GREEN} width={140} height={36} />
-                <span className="ncc-banner__activity-status">
-                  <Radio size={11} />
-                  Normal
+              <a className="ncc-banner__explorer-btn" href={NCC_EXPLORER_HOME_URL} target="_blank" rel="noopener noreferrer">
+                <img src={trustgridLogo} alt="" className="ncc-banner__explorer-logo" />
+                <span className="ncc-banner__explorer-text">
+                  <span className="ncc-banner__explorer-title">TrustGrid Ledger</span>
+                  <span className="ncc-banner__explorer-sub">Open explorer</span>
                 </span>
-              </div>
+                <ArrowUpRight size={15} />
+              </a>
 
               <div className="ncc-banner__globe" aria-hidden>
                 <Globe size={104} strokeWidth={0.75} />
@@ -801,17 +952,31 @@ export function NCCScreen() {
                   <div className="ncc-stat-card__icon" style={{ backgroundColor: card.bg, color: card.color }}>
                     <card.icon size={18} />
                   </div>
-                  {card.trend ? (
-                    <span className="ncc-stat-card__trend">
-                      <TrendingUp size={11} />
-                      {card.trend}
-                    </span>
-                  ) : (
-                    <span className="ncc-stat-card__trend ncc-stat-card__trend--flat">—</span>
-                  )}
+                  <div className="ncc-stat-card__top-right">
+                    {card.trend ? (
+                      <span className="ncc-stat-card__trend">
+                        <TrendingUp size={11} />
+                        {card.trend}
+                      </span>
+                    ) : (
+                      <span className="ncc-stat-card__trend ncc-stat-card__trend--flat">—</span>
+                    )}
+                    {card.explorerUrl && (
+                      <a
+                        className="ncc-stat-card__link"
+                        href={card.explorerUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        title={`View ${card.label} in the TrustGrid Ledger Explorer`}
+                        aria-label={`View ${card.label} in the TrustGrid Ledger Explorer`}
+                      >
+                        <ArrowUpRight size={14} />
+                      </a>
+                    )}
+                  </div>
                 </div>
                 <div>
-                  <div className="ncc-stat-card__number">{card.value.toLocaleString()}</div>
+                  <div className="ncc-stat-card__number">{formatCount(kpiCounts[card.key])}</div>
                   <div className="ncc-stat-card__label">{card.label}</div>
                 </div>
                 <Sparkline values={card.spark} color={card.color} width={110} height={26} />
@@ -829,20 +994,16 @@ export function NCCScreen() {
                   </div>
                   <div>
                     <h2 className="ncc-panel__title">Transaction Activity</h2>
-                    <p className="ncc-panel__subtitle">Total transactions over time</p>
+                    <p className="ncc-panel__subtitle">Transactions in the last 24 hours</p>
                   </div>
                 </div>
-                <RangeToggle value={txnRange} onChange={setTxnRange} options={TXN_RANGE_OPTIONS.map((id) => ({ id, label: id }))} />
               </div>
 
               <div className="ncc-panel__headline">
-                <span className="ncc-panel__headline-value">{txnPeriodTotal.toLocaleString()}</span>
-                <span className={`ncc-panel__headline-trend ${txnPeriodTrend < 0 ? 'ncc-panel__headline-trend--down' : ''}`}>
-                  <TrendingUp size={13} />
-                  {txnPeriodTrend >= 0 ? '+' : ''}
-                  {txnPeriodTrend}%
+                <span className="ncc-panel__headline-value">{ledgerTxs ? txnPeriodTotal.toLocaleString() : '—'}</span>
+                <span className="ncc-panel__headline-label">
+                  {txnData.complete ? 'transactions in the last 24h' : `of the latest ${ledgerTxs?.length ?? 0} transactions`}
                 </span>
-                <span className="ncc-panel__headline-label">transactions in this period</span>
               </div>
 
               <LineChart labels={txnData.labels} values={txnData.values} color={NCC_GREEN} valueLabel="Transactions" />
@@ -856,12 +1017,14 @@ export function NCCScreen() {
                   </div>
                   <div>
                     <h2 className="ncc-panel__title">Transaction Distribution</h2>
-                    <p className="ncc-panel__subtitle">Breakdown by transaction type</p>
+                    <p className="ncc-panel__subtitle">
+                      Breakdown by type of the latest {ledgerTxs ? ledgerTxs.length : '—'} transactions
+                    </p>
                   </div>
                 </div>
               </div>
 
-              <DonutChart segments={DISTRIBUTION_SEGMENTS} centerValue={TRANSACTIONS_TOTAL.toLocaleString()} centerLabel="Transactions" />
+              <DonutChart segments={distribution} centerValue={ledgerTxs ? String(ledgerTxs.length) : '—'} centerLabel="Latest Txns" />
             </div>
           </div>
 
@@ -890,7 +1053,7 @@ export function NCCScreen() {
               />
 
               <div className="ncc-panel__headline ncc-panel__headline--compact">
-                <span className="ncc-panel__headline-value">{totalHolders}</span>
+                <span className="ncc-panel__headline-value">{holderDaily ? totalHolders.toLocaleString() : '—'}</span>
                 <span className={`ncc-panel__headline-trend ${holderTrend < 0 ? 'ncc-panel__headline-trend--down' : ''}`}>
                   <TrendingUp size={13} />
                   {holderTrend >= 0 ? '+' : ''}
@@ -925,7 +1088,7 @@ export function NCCScreen() {
               />
 
               <div className="ncc-panel__headline ncc-panel__headline--compact">
-                <span className="ncc-panel__headline-value">{credentialPeriodTotal}</span>
+                <span className="ncc-panel__headline-value">{credentialDaily ? credentialPeriodTotal.toLocaleString() : '—'}</span>
                 <span className={`ncc-panel__headline-trend ${credentialPeriodTrend < 0 ? 'ncc-panel__headline-trend--down' : ''}`}>
                   <TrendingUp size={13} />
                   {credentialPeriodTrend >= 0 ? '+' : ''}
@@ -953,13 +1116,13 @@ export function NCCScreen() {
               <div className="ncc-lifecycle-numbers">
                 <div>
                   <div className="ncc-lifecycle-numbers__value" style={{ color: NCC_GREEN }}>
-                    {servicePeriodCreated}
+                    {serviceLifecycle ? servicePeriodCreated : '—'}
                   </div>
                   <div className="ncc-lifecycle-numbers__label">Created</div>
                 </div>
                 <div style={{ textAlign: 'right' }}>
                   <div className="ncc-lifecycle-numbers__value" style={{ color: NCC_PURPLE }}>
-                    {servicePeriodPublished}
+                    {serviceLifecycle ? servicePeriodPublished : '—'}
                   </div>
                   <div className="ncc-lifecycle-numbers__label">Published</div>
                 </div>
@@ -1004,56 +1167,63 @@ export function NCCScreen() {
                   </div>
                 </div>
                 <span className="ncc-topology__ratio-badge">
-                  {NODES_ONLINE} / {NODES_TOTAL} Nodes Connected
+                  {nodesLabel} Nodes Connected
                 </span>
               </div>
 
               <div className="ncc-topology">
                 <svg className="ncc-topology__lines" viewBox="0 0 300 300" preserveAspectRatio="none" aria-hidden>
-                  <line x1="150" y1="150" x2="50" y2="50" stroke="#c7d2fe" strokeWidth="1.5" strokeDasharray="3 4" />
-                  <line x1="150" y1="150" x2="150" y2="50" stroke="#c7d2fe" strokeWidth="1.5" strokeDasharray="3 4" />
-                  <line x1="150" y1="150" x2="250" y2="50" stroke="#c7d2fe" strokeWidth="1.5" strokeDasharray="3 4" />
-                  <line x1="150" y1="150" x2="50" y2="150" stroke="#c7d2fe" strokeWidth="1.5" strokeDasharray="3 4" />
-                  <line x1="150" y1="150" x2="250" y2="150" stroke="#c7d2fe" strokeWidth="1.5" strokeDasharray="3 4" />
-                  <line x1="150" y1="150" x2="50" y2="250" stroke="#c7d2fe" strokeWidth="1.5" strokeDasharray="3 4" />
-                  <line x1="150" y1="150" x2="150" y2="250" stroke="#c7d2fe" strokeWidth="1.5" strokeDasharray="3 4" />
-                  <line x1="150" y1="150" x2="250" y2="250" stroke="#c7d2fe" strokeWidth="1.5" strokeDasharray="3 4" />
+                  {topology.map((cell, i) =>
+                    cell && cell !== 'hub' ? (
+                      <line
+                        key={i}
+                        x1="150"
+                        y1="150"
+                        x2={(i % 3) * 100 + 50}
+                        y2={Math.floor(i / 3) * 100 + 50}
+                        stroke="#c7d2fe"
+                        strokeWidth="1.5"
+                        strokeDasharray="3 4"
+                      />
+                    ) : null
+                  )}
                 </svg>
 
                 <div className="ncc-topology__grid">
-                  {NODES.slice(0, 4).map((node) => (
-                    <div className="ncc-topology__node" key={node.alias}>
-                      <span className="ncc-topology__node-name">{node.alias}</span>
-                      <span className={`ncc-topology__node-status ${node.status === 'Offline' ? 'ncc-topology__node-status--offline' : ''}`}>
-                        <span className={`ncc-topology__dot ${node.status === 'Offline' ? 'ncc-topology__dot--offline' : ''}`} />
-                        {node.status}
-                      </span>
-                      <span className="ncc-topology__node-addr">
-                        {node.nodeIp}:{node.port}
-                      </span>
-                    </div>
-                  ))}
-
-                  <div className="ncc-topology__hub">
-                    <img src={dtakLogo} alt="" className="ncc-topology__hub-logo" />
-                    <span>DTAK</span>
-                  </div>
-
-                  {NODES.slice(4, 8).map((node) => (
-                    <div className="ncc-topology__node" key={node.alias}>
-                      <span className="ncc-topology__node-name">{node.alias}</span>
-                      <span className={`ncc-topology__node-status ${node.status === 'Offline' ? 'ncc-topology__node-status--offline' : ''}`}>
-                        <span className={`ncc-topology__dot ${node.status === 'Offline' ? 'ncc-topology__dot--offline' : ''}`} />
-                        {node.status}
-                      </span>
-                      <span className="ncc-topology__node-addr">
-                        {node.nodeIp}:{node.port}
-                      </span>
-                    </div>
-                  ))}
+                  {topology.map((cell, i) => {
+                    if (cell === 'hub') {
+                      return (
+                        <div className="ncc-topology__hub" key="hub">
+                          <img src={dtakLogo} alt="" className="ncc-topology__hub-logo" />
+                          <span>DTAK</span>
+                        </div>
+                      );
+                    }
+                    if (!cell) return <div className="ncc-topology__empty" key={i} aria-hidden />;
+                    const statusMod = cell.status === 'Operational' ? '' : ` ncc-topology__node-status--${cell.status.toLowerCase()}`;
+                    const dotMod = cell.status === 'Operational' ? '' : ` ncc-topology__dot--${cell.status.toLowerCase()}`;
+                    return (
+                      <div className="ncc-topology__node" key={cell.alias} title={`DID ${cell.did} · uptime ${formatUptime(cell.uptimeSecs)}`}>
+                        <span className="ncc-topology__node-name">{cell.alias}</span>
+                        <span className={`ncc-topology__node-status${statusMod}`}>
+                          <span className={`ncc-topology__dot${dotMod}`} />
+                          {cell.status}
+                        </span>
+                        <span className="ncc-topology__node-addr">
+                          {cell.nodeIp}:{cell.nodePort}
+                        </span>
+                        <span className="ncc-topology__node-addr">
+                          {cell.services.join(', ') || '—'} · up {formatUptime(cell.uptimeSecs)}
+                        </span>
+                      </div>
+                    );
+                  })}
                 </div>
 
-                <div className="ncc-topology__footnote">+{NODES_TOTAL - NODES.length} more nodes across the network</div>
+                {nodes.length > TOPOLOGY_MAX_NODES && (
+                  <div className="ncc-topology__footnote">+{nodes.length - TOPOLOGY_MAX_NODES} more nodes across the network</div>
+                )}
+                {!poolNodes && <div className="ncc-topology__footnote">Loading nodes…</div>}
               </div>
             </div>
 
@@ -1092,7 +1262,7 @@ export function NCCScreen() {
                     <span className="ncc-insight-tile__icon" style={{ backgroundColor: 'rgba(242, 169, 59, 0.14)', color: NCC_AMBER }}>
                       <Clock size={16} />
                     </span>
-                    <div className="ncc-insight-tile__value">{NODES[0].uptime.split(',')[0]}</div>
+                    <div className="ncc-insight-tile__value">{formatUptime(networkUptimeSecs).split(',')[0]}</div>
                     <div className="ncc-insight-tile__label">Network uptime</div>
                     <div className="ncc-insight-tile__meta">and counting</div>
                   </div>
@@ -1110,11 +1280,12 @@ export function NCCScreen() {
                       <p className="ncc-panel__subtitle">Latest transactions on the network</p>
                     </div>
                   </div>
-                  <span className="ncc-view-all">
+                  <a className="ncc-view-all" href={explorerTxsUrl()} target="_blank" rel="noopener noreferrer">
                     View all <ArrowUpRight size={13} />
-                  </span>
+                  </a>
                 </div>
 
+                <div className="ncc-ledger-table-wrap">
                 <table className="ncc-ledger-table">
                   <thead>
                     <tr>
@@ -1125,20 +1296,31 @@ export function NCCScreen() {
                     </tr>
                   </thead>
                   <tbody>
-                    {RECENT_LEDGER.map((row) => (
-                      <tr key={row.seq}>
-                        <td>{row.seq}</td>
-                        <td>
-                          <span className="ncc-ledger-badge" style={{ backgroundColor: `${row.color}18`, color: row.color }}>
-                            {row.type}
-                          </span>
-                        </td>
-                        <td className="ncc-ledger-table__id">{row.txnId}</td>
-                        <td className="ncc-ledger-table__time">{row.time}</td>
+                    {(ledgerTxs ?? []).map((tx) => {
+                      const meta = txnTypeMeta(tx.type);
+                      return (
+                        <tr key={tx.seqNo}>
+                          <td>{tx.seqNo}</td>
+                          <td>
+                            <span className="ncc-ledger-badge" style={{ backgroundColor: `${meta.color}18`, color: meta.color }}>
+                              {meta.label}
+                            </span>
+                          </td>
+                          <td className="ncc-ledger-table__id" title={tx.txnId}>{tx.txnId}</td>
+                          <td className="ncc-ledger-table__time" title={formatTxnDate(tx.txnTime)}>
+                            {formatTimeAgo(tx.txnTime, now)}
+                          </td>
+                        </tr>
+                      );
+                    })}
+                    {!ledgerTxs && (
+                      <tr>
+                        <td colSpan={4}>Loading transactions…</td>
                       </tr>
-                    ))}
+                    )}
                   </tbody>
                 </table>
+                </div>
               </div>
             </div>
           </div>
@@ -1160,7 +1342,7 @@ export function NCCScreen() {
             <div className="ncc-txn-id-row">
               <div className="ncc-txn-id-row__left">
                 <span className="ncc-txn-id-row__label">Txn Id</span>
-                <span className="ncc-txn-id-row__value">{txnId}</span>
+                <span className="ncc-txn-id-row__value">{lastTxn?.txnId ?? '—'}</span>
               </div>
               <button type="button" className="ncc-copy-btn" onClick={handleCopyTxn} title="Copy transaction ID">
                 <Copy size={15} />
@@ -1171,19 +1353,19 @@ export function NCCScreen() {
             <div className="ncc-txn-grid">
               <div className="ncc-txn-field">
                 <div className="ncc-txn-field__label">Tx Date</div>
-                <div className="ncc-txn-field__value">2026-09-14 09:00:02</div>
+                <div className="ncc-txn-field__value">{lastTxn ? formatTxnDate(lastTxn.txnTime) : '—'}</div>
               </div>
               <div className="ncc-txn-field">
                 <div className="ncc-txn-field__label">Tx Type</div>
-                <div className="ncc-txn-field__value ncc-txn-field__value--link">NYM</div>
+                <div className="ncc-txn-field__value ncc-txn-field__value--link">{lastTxn ? txnTypeMeta(lastTxn.type).label : '—'}</div>
               </div>
               <div className="ncc-txn-field">
                 <div className="ncc-txn-field__label">Tx Sq No</div>
-                <div className="ncc-txn-field__value">{TRANSACTIONS_TOTAL}</div>
+                <div className="ncc-txn-field__value">{lastTxn?.seqNo ?? '—'}</div>
               </div>
               <div className="ncc-txn-field">
                 <div className="ncc-txn-field__label">Time Ago</div>
-                <div className="ncc-txn-field__value">25 mins, 16 secs ago</div>
+                <div className="ncc-txn-field__value">{lastTxn ? formatTimeAgo(lastTxn.txnTime, now, true) : '—'}</div>
               </div>
             </div>
           </div>

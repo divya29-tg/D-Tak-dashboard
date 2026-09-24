@@ -389,30 +389,50 @@
   color: var(--ncc-text-primary);
 }
 
-.ncc-banner__activity {
+.ncc-banner__explorer-btn {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 190px;
+  padding: 10px 14px;
   background-color: var(--ncc-card-elevated);
   border: 1px solid var(--ncc-border);
   border-radius: 12px;
-  padding: 10px 14px;
+  color: var(--ncc-text-secondary);
+  text-decoration: none;
+  transition: border-color 0.15s ease, background-color 0.15s ease;
+}
+
+.ncc-banner__explorer-btn:hover {
+  border-color: var(--ncc-green);
+  color: var(--ncc-green);
+}
+
+.ncc-banner__explorer-logo {
+  width: 28px;
+  height: 28px;
+  object-fit: contain;
+  flex-shrink: 0;
+}
+
+.ncc-banner__explorer-text {
   display: flex;
   flex-direction: column;
-  gap: 6px;
-  min-width: 190px;
+  flex: 1;
+  min-width: 0;
 }
 
-.ncc-banner__activity-label {
+.ncc-banner__explorer-title {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--ncc-text-primary);
+}
+
+.ncc-banner__explorer-sub {
   font-size: 11px;
   color: var(--ncc-text-tertiary);
-  font-weight: 600;
-}
-
-.ncc-banner__activity-status {
-  display: inline-flex;
-  align-items: center;
-  gap: 5px;
-  font-size: 12px;
-  font-weight: 600;
-  color: var(--ncc-green);
 }
 
 .ncc-banner__globe {
@@ -477,6 +497,28 @@
 
 .ncc-stat-card__trend--flat {
   color: var(--ncc-text-tertiary);
+}
+
+.ncc-stat-card__top-right {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.ncc-stat-card__link {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border-radius: 6px;
+  color: var(--ncc-text-tertiary);
+  transition: color 0.15s ease, background-color 0.15s ease;
+}
+
+.ncc-stat-card__link:hover {
+  color: var(--ncc-green);
+  background-color: var(--ncc-verified-bg);
 }
 
 .ncc-stat-card__number {
@@ -828,6 +870,14 @@
   background-color: var(--ncc-muted-red);
 }
 
+.ncc-topology__node-status--unknown {
+  color: var(--ncc-text-tertiary);
+}
+
+.ncc-topology__dot--unknown {
+  background-color: var(--ncc-text-tertiary);
+}
+
 .ncc-topology__node-addr {
   font-size: 11px;
   color: var(--ncc-text-tertiary);
@@ -924,6 +974,7 @@
 /* Recent Ledger Activity table */
 .ncc-view-all {
   display: inline-flex;
+  text-decoration: none;
   align-items: center;
   gap: 4px;
   font-size: 12px;
@@ -931,6 +982,21 @@
   color: var(--ncc-green);
   cursor: pointer;
   flex-shrink: 0;
+}
+
+.ncc-view-all:hover {
+  text-decoration: underline;
+}
+
+.ncc-ledger-table-wrap {
+  max-height: 360px;
+  overflow-y: auto;
+}
+
+.ncc-ledger-table-wrap .ncc-ledger-table th {
+  position: sticky;
+  top: 0;
+  background-color: var(--ncc-card);
 }
 
 .ncc-ledger-table {
@@ -1100,6 +1166,10 @@
   .ncc-topology__grid {
     grid-template-columns: repeat(2, 1fr);
     grid-template-rows: repeat(5, minmax(70px, auto));
+  }
+
+  .ncc-topology__empty {
+    display: none;
   }
   .ncc-topology__hub {
     grid-column: span 2;

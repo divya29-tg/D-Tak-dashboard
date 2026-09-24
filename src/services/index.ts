@@ -5,3 +5,4 @@ export * from './api/groups';
 export * from './api/dashboard';
 export * from './api/contactRequests';
 export * from './gunService';
+export * from './api/ncc';
