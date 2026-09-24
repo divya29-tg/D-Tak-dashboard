@@ -16,7 +16,6 @@ coverage/
 .vite/
 
 # Environment files
-.env
 .env.local
 .env.*.local
 *.local

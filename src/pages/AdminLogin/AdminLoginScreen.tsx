@@ -3,7 +3,7 @@ import { X } from 'lucide-react';
 import { useAuth } from '@/app/router/AppRouter';
 import dtakLogo from '@/assets/dtak-logo.png';
 import { gunService } from '@/services/gunService';
-import { isAdminUser, setAdminUser, getAdminUsernames } from '@/utils/adminRegistry';
+import { isAdminUser, setAdminUser } from '@/utils/adminRegistry';
 import './AdminLoginScreen.css';
 
 /**
@@ -126,16 +126,18 @@ export function AdminLoginScreen() {
     const gunAlias = adminId.trim();
     const gunSecret = stretchPin(pin);
 
-    // Bootstrap path: env credentials are only honored to create the very
-    // first admin, before the Users list has anyone flagged as admin.
-    const expectedAdminId = import.meta.env.VITE_LOCAL_ADMIN_ID;
-    const expectedPin = import.meta.env.VITE_LOCAL_ADMIN_PIN;
-    const isBootstrap =
-      getAdminUsernames().length === 0 && gunAlias === expectedAdminId && pin === expectedPin;
+    // Env admins (VITE_LOCAL_ADMIN_ID, comma-separated) are always authorized;
+    // with the shared VITE_LOCAL_ADMIN_PIN they may also create their account.
+    const envAdminIds = (import.meta.env.VITE_LOCAL_ADMIN_ID ?? '')
+      .split(',')
+      .map((id) => id.trim().toLowerCase())
+      .filter(Boolean);
+    const isEnvAdmin = envAdminIds.includes(gunAlias.toLowerCase());
+    const isBootstrap = isEnvAdmin && pin === import.meta.env.VITE_LOCAL_ADMIN_PIN;
 
-    // Who gets into the console is controlled by the Users list (the "Grant
-    // Admin Access" flag), not a fixed credential.
-    if (!isAdminUser(gunAlias) && !isBootstrap) {
+    // Everyone else is controlled by the Users list (the "Grant Admin Access"
+    // flag), not a fixed credential.
+    if (!isAdminUser(gunAlias) && !isEnvAdmin) {
       setErrorMessage('This account is not authorized for admin access');
       return;
     }
@@ -180,7 +182,7 @@ export function AdminLoginScreen() {
       }
     }
 
-    if (isBootstrap) {
+    if (isEnvAdmin) {
       setAdminUser(gunAlias, true);
     }
 
