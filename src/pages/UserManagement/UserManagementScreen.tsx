@@ -455,7 +455,7 @@ export function UserManagementScreen() {
             {isLoading ? (
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '60px', color: '#8FBF3F', gap: '10px' }}>
                 <Loader2 className="animate-spin" size={20} />
-                <span>Loading users from server...</span>
+                <span>Loading users...</span>
               </div>
             ) : apiError ? (
               <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '60px', color: '#EF4444', gap: '12px' }}>
